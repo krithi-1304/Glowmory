@@ -7,6 +7,7 @@ const productionCsp =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'";
 
 export default defineConfig({
+  base: '/Glowmory/',
   plugins: [
     react(),
     VitePWA({
