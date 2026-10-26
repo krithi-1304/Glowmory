@@ -1,0 +1,296 @@
+import { Canvas, useFrame } from '@react-three/fiber';
+import {
+  Bloom,
+  EffectComposer,
+  Noise,
+  Vignette,
+} from '@react-three/postprocessing';
+import { MeshTransmissionMaterial, Sparkles } from '@react-three/drei';
+import { Suspense, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { feelingColors } from './palette';
+
+const fireflyColors = Object.values(feelingColors);
+
+function Window() {
+  return (
+    <group position={[-2.8, 2.45, -0.4]}>
+      <mesh>
+        <planeGeometry args={[3.2, 2.4]} />
+        <meshBasicMaterial color="#9b8ad0" />
+      </mesh>
+      <mesh position={[0, 0, 0.02]}>
+        <planeGeometry args={[3.05, 2.25]} />
+        <meshBasicMaterial color="#b9a7e8" transparent opacity={0.7} />
+      </mesh>
+      <mesh position={[0, 0, 0.06]}>
+        <ringGeometry args={[0.36, 0.41, 32, 1, 0.5, Math.PI * 1.5]} />
+        <meshBasicMaterial color="#fff0b8" />
+      </mesh>
+      <mesh position={[0, 0, 0.05]}>
+        <boxGeometry args={[0.08, 2.3, 0.08]} />
+        <meshBasicMaterial color="#ffe5d4" />
+      </mesh>
+      <mesh position={[0, 0, 0.05]}>
+        <boxGeometry args={[3.2, 0.08, 0.08]} />
+        <meshBasicMaterial color="#ffe5d4" />
+      </mesh>
+      <Stars count={28} />
+    </group>
+  );
+}
+
+function Stars({ count }: { count: number }) {
+  const positions = useMemo(
+    () =>
+      Array.from({ length: count }, (_, index) => {
+        const angle = index * 2.39996;
+        return [
+          Math.cos(angle) * (0.35 + (index % 5) * 0.23) - 0.4,
+          Math.sin(angle) * (0.35 + (index % 4) * 0.2) + 0.25,
+          0.11,
+        ] as [number, number, number];
+      }),
+    [count],
+  );
+  return (
+    <>
+      {positions.map((position, index) => (
+        <mesh key={index} position={position}>
+          <sphereGeometry args={[0.018, 6, 6]} />
+          <meshBasicMaterial color="#fff0b8" />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function FairyLights() {
+  const bulbs = useMemo(
+    () =>
+      Array.from({ length: 18 }, (_, index) => {
+        const x = -3.8 + index * 0.45;
+        return [x, 2.98 - Math.pow((x + 0.1) / 4, 2) * 0.35, 0.15] as [
+          number,
+          number,
+          number,
+        ];
+      }),
+    [],
+  );
+  return (
+    <group>
+      {bulbs.map((position, index) => (
+        <Bulb key={index} position={position} index={index} />
+      ))}
+    </group>
+  );
+}
+
+function Bulb({
+  position,
+  index,
+}: {
+  position: [number, number, number];
+  index: number;
+}) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (ref.current)
+      ref.current.scale.setScalar(
+        0.9 + Math.sin(clock.elapsedTime * 1.6 + index) * 0.08,
+      );
+  });
+  return (
+    <mesh ref={ref} position={position}>
+      <sphereGeometry args={[0.07, 12, 12]} />
+      <meshBasicMaterial color="#ffd97a" toneMapped={false} />
+    </mesh>
+  );
+}
+
+function Shelf() {
+  return (
+    <group position={[0, -1.25, 0]}>
+      <mesh>
+        <boxGeometry args={[8.5, 0.38, 1.5]} />
+        <meshStandardMaterial color="#d9a877" roughness={0.78} />
+      </mesh>
+      <mesh position={[-2.75, 0.38, 0]}>
+        <boxGeometry args={[1.3, 0.16, 0.8]} />
+        <meshStandardMaterial color="#fff6ec" roughness={1} />
+      </mesh>
+      <mesh position={[-2.75, 0.5, 0]} rotation={[0, 0, -0.08]}>
+        <boxGeometry args={[1.05, 0.04, 0.66]} />
+        <meshStandardMaterial color="#f7c6d6" roughness={1} />
+      </mesh>
+      <mesh position={[2.8, 0.45, 0]}>
+        <cylinderGeometry args={[0.42, 0.5, 0.6, 20]} />
+        <meshStandardMaterial color="#bdebd3" roughness={0.9} />
+      </mesh>
+      <mesh position={[2.8, 0.95, 0]}>
+        <sphereGeometry args={[0.58, 12, 8]} />
+        <meshStandardMaterial color="#bdebd3" roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
+function Jar() {
+  return (
+    <group position={[0, -0.2, 0.15]}>
+      <mesh>
+        <latheGeometry
+          args={[
+            [
+              new THREE.Vector2(0.55, -1.15),
+              new THREE.Vector2(0.72, -0.98),
+              new THREE.Vector2(0.78, 0.55),
+              new THREE.Vector2(0.58, 0.95),
+              new THREE.Vector2(0.38, 1.12),
+            ],
+            48,
+          ]}
+        />
+        <MeshTransmissionMaterial
+          color="#d9e9ed"
+          thickness={0.18}
+          roughness={0.12}
+          transmission={0.92}
+          ior={1.35}
+          chromaticAberration={0.03}
+          samples={4}
+        />
+      </mesh>
+      <mesh position={[0, 1.15, 0]}>
+        <cylinderGeometry args={[0.42, 0.45, 0.18, 32]} />
+        <meshStandardMaterial color="#d9a877" roughness={0.45} />
+      </mesh>
+      <pointLight
+        position={[0, 0, 0.45]}
+        color="#ffd97a"
+        intensity={1.8}
+        distance={3}
+      />
+      <Fireflies />
+    </group>
+  );
+}
+
+function Fireflies() {
+  const points = useMemo(
+    () =>
+      Array.from({ length: 16 }, (_, index) => ({
+        position: [
+          ((index % 4) - 1.5) * 0.25,
+          (((index * 7) % 9) - 4) * 0.12,
+          0.4 + (index % 3) * 0.05,
+        ] as [number, number, number],
+        color: fireflyColors[index % fireflyColors.length]!,
+        phase: index * 0.7,
+      })),
+    [],
+  );
+  return (
+    <group>
+      {points.map((fly, index) => (
+        <Firefly key={index} {...fly} />
+      ))}
+    </group>
+  );
+}
+
+function Firefly({
+  position,
+  color,
+  phase,
+}: {
+  position: [number, number, number];
+  color: string;
+  phase: number;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.position.x =
+        position[0] + Math.sin(clock.elapsedTime * 0.45 + phase) * 0.16;
+      ref.current.position.y =
+        position[1] + Math.cos(clock.elapsedTime * 0.6 + phase) * 0.14;
+      ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.7 + phase) * 0.3;
+    }
+  });
+  return (
+    <group ref={ref} position={position}>
+      <mesh>
+        <sphereGeometry args={[0.045, 8, 8]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+      <mesh position={[-0.055, 0, 0]} rotation={[0, 0, 0.25]}>
+        <planeGeometry args={[0.1, 0.05]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.55}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <mesh position={[0.055, 0, 0]} rotation={[0, 0, -0.25]}>
+        <planeGeometry args={[0.1, 0.05]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.55}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <pointLight color={color} intensity={0.16} distance={0.55} />
+    </group>
+  );
+}
+
+function SceneTitle() {
+  return null;
+}
+
+function RoomScene() {
+  return (
+    <>
+      <color attach="background" args={['#8e7cc3']} />
+      <ambientLight intensity={0.75} color="#ffe5d4" />
+      <Window />
+      <FairyLights />
+      <Shelf />
+      <Jar />
+      <SceneTitle />
+      <Sparkles
+        count={24}
+        scale={[7, 5, 1]}
+        size={1.5}
+        speed={0.15}
+        color="#ffd97a"
+        opacity={0.35}
+      />
+      <EffectComposer multisampling={0}>
+        <Bloom intensity={0.65} luminanceThreshold={0.7} mipmapBlur />
+        <Vignette eskil={false} offset={0.28} darkness={0.45} />
+        <Noise opacity={0.025} />
+      </EffectComposer>
+    </>
+  );
+}
+
+export function Room() {
+  return (
+    <div className="room-stage" aria-hidden="true">
+      <Canvas
+        dpr={[1, 1.75]}
+        camera={{ position: [0, 0.65, 7], fov: 42 }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
+      >
+        <Suspense fallback={null}>
+          <RoomScene />
+        </Suspense>
+      </Canvas>
+    </div>
+  );
+}

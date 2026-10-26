@@ -27,9 +27,10 @@
   packages will be reviewed and pinned when their phase uses them; do not import
   unused heavy packages into the initial shell.
 - Production CSP allows same-origin code/assets only, with no inline JavaScript,
-  eval or inline stylesheet allowance. Vite's development refresh has a separate
-  development context; production tests target the built output. Document any
-  future scene-library CSP exception with evidence before changing the policy.
+  eval or inline stylesheet allowance. The first Drei SDF text approach was
+  removed because its blob worker failed in strict offline browser tests; the
+  title now uses local Caveat CSS with procedural depth shadows. Vite's
+  development refresh has a separate context; production tests target the build.
 - Supply `_headers` plus a build-injected CSP meta fallback. Only an actual static
   host can enforce the response headers; local preview validates the meta policy.
 - Preserve the six supplied feelings, Caveat/Nunito fonts, exact palette and kind
@@ -43,3 +44,9 @@
 - Impeccable's launcher returned permission denied. Context was read directly
   from the supplied spec; no design engine output or automated design verdict is
   claimed. Phase 0 is a foundation shell; room design belongs to Phase 1.
+- Owner direction for the room: use dimensional 3D lettering as part of the
+  firefly theme. The likely implementation is Drei/Troika SDF text for the live
+  title and glow treatment, with true extruded `TextGeometry` reserved for
+  short static labels if a local typeface JSON is available. Three.js's official
+  `TextGeometry` requires typeface JSON; the bundled Caveat webfont alone is not
+  that format. Keep readability and reduced-motion behavior ahead of depth.
