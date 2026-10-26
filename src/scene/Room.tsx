@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Bloom,
   EffectComposer,
@@ -6,7 +6,7 @@ import {
   Vignette,
 } from '@react-three/postprocessing';
 import { MeshTransmissionMaterial, Sparkles } from '@react-three/drei';
-import { Suspense, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { feelingColors } from './palette';
 
@@ -161,7 +161,7 @@ function Shelf() {
 
 function Jar() {
   return (
-    <group position={[0, -0.2, 0.15]}>
+    <group position={[0, -0.18, 0.15]} scale={[1.14, 1.14, 1.14]}>
       <mesh>
         <latheGeometry
           args={[
@@ -256,13 +256,20 @@ function Firefly({
     context.fillRect(0, 0, 64, 64);
     return new THREE.CanvasTexture(canvas);
   }, [color]);
-  useFrame(({ clock }) => {
+  useFrame(({ clock, pointer }) => {
     if (ref.current) {
+      const pulse = 0.82 + Math.sin(clock.elapsedTime * 2.4 + phase) * 0.18;
+      const drift = 0.06;
       ref.current.position.x =
-        position[0] + Math.sin(clock.elapsedTime * 0.45 + phase) * 0.16;
+        position[0] +
+        Math.sin(clock.elapsedTime * 0.45 + phase) * 0.16 +
+        (pointer.x * 0.35 - position[0]) * drift;
       ref.current.position.y =
-        position[1] + Math.cos(clock.elapsedTime * 0.6 + phase) * 0.14;
+        position[1] +
+        Math.cos(clock.elapsedTime * 0.6 + phase) * 0.14 +
+        (pointer.y * 0.28 - position[1]) * drift;
       ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.7 + phase) * 0.3;
+      ref.current.scale.setScalar(pulse);
     }
   });
   return (
@@ -308,10 +315,43 @@ function SceneTitle() {
   return null;
 }
 
+function CameraRig() {
+  const { camera } = useThree();
+  const tilt = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const onTilt = (event: DeviceOrientationEvent) => {
+      tilt.current.x = Math.max(-18, Math.min(18, event.beta ?? 0)) / 18;
+      tilt.current.y = Math.max(-18, Math.min(18, event.gamma ?? 0)) / 18;
+    };
+    window.addEventListener('deviceorientation', onTilt);
+    return () => window.removeEventListener('deviceorientation', onTilt);
+  }, []);
+  // R3F's render loop intentionally mutates the live camera for parallax.
+  // eslint-disable-next-line react-hooks/immutability
+  useFrame(({ pointer }) => {
+    // eslint-disable-next-line react-hooks/immutability
+    camera.position.x = THREE.MathUtils.damp(
+      camera.position.x,
+      pointer.x * 0.28 + tilt.current.y * 0.16,
+      3,
+      1 / 60,
+    );
+    camera.position.y = THREE.MathUtils.damp(
+      camera.position.y,
+      0.65 + pointer.y * 0.16 - tilt.current.x * 0.12,
+      3,
+      1 / 60,
+    );
+    camera.lookAt(0, 0.35, 0);
+  });
+  return null;
+}
+
 function RoomScene() {
   return (
     <>
       <color attach="background" args={['#352b5d']} />
+      <CameraRig />
       <NightBackdrop />
       <ambientLight intensity={0.42} color="#d7c5ff" />
       <Window />

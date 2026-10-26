@@ -32,6 +32,22 @@ export function App() {
   const [ritualStage, setRitualStage] = useState(0);
   const [breathing, setBreathing] = useState(false);
   const ritualRef = useRef<HTMLDivElement>(null);
+  const enableMotion = async () => {
+    const orientation =
+      DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+        requestPermission?: () => Promise<'granted' | 'denied'>;
+      };
+    if (orientation.requestPermission) {
+      const result = await orientation.requestPermission();
+      setNotice(
+        result === 'granted'
+          ? 'Motion is on. Tilt the jar gently.'
+          : 'Motion permission was not granted.',
+      );
+    } else {
+      setNotice('Motion tracking is ready on this device.');
+    }
+  };
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
@@ -103,14 +119,24 @@ export function App() {
         <p className="helper">{strings.helper}</p>
       </section>
       <nav className="scene-actions" aria-label="Jar actions">
-        <button onClick={() => setPanel('write')}>Write</button>
-        <button onClick={() => setPanel('low')}>Shake the jar</button>
         <button
-          className="quiet-button"
+          className="paper-tag paper-tag--write"
+          onClick={() => setPanel('write')}
+        >
+          <span aria-hidden="true">✦</span> Write a memory
+        </button>
+        <button
+          className="paper-tag paper-tag--shake"
+          onClick={() => setPanel('low')}
+        >
+          <span aria-hidden="true">◌</span> Find a spark
+        </button>
+        <button
+          className="quiet-button paper-tag"
           onClick={() => setPanel('settings')}
           aria-label="Settings"
         >
-          Settings
+          Jar settings
         </button>
       </nav>
       {ritualStage > 0 && (
@@ -295,6 +321,9 @@ export function App() {
                   />
                 </label>
                 <div className="settings-actions">
+                  <button onClick={() => void enableMotion()}>
+                    Enable motion
+                  </button>
                   <button onClick={download}>Export backup</button>
                   <label className="file-button">
                     Import backup
