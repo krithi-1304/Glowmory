@@ -29,3 +29,14 @@ comfort testing still require manual review.
   should code-split heavy scene features before release.
 - Manual phone frame-rate, Safari WebGL, lighting quality and owner comfort review
   remain open. Interactions are not present yet.
+
+## Functional MVP pass — 2026-10-26
+
+- Added local IndexedDB storage with localStorage fallback, validated export/import,
+  recall weighting, writing panel, feeling picker, reader, sleeping shelf, settings,
+  backup/delete controls, a short GSAP birth reveal and installable PWA assets.
+- Unit tests: 8 passed across recall, import validation and palette foundations.
+- Chromium smoke flow: save a memory, reload, shake/surprise recall: passed.
+- This is a complete usable MVP, but the full specification still has deferred
+  depth: synthesized audio, device-motion shake permission, full eight-beat ritual,
+  detailed boids/quality tiers, plain list view, and optional camera hands.

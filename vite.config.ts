@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // Dev needs Vite's refresh preamble and websocket. Production has neither.
 const productionCsp =
@@ -8,6 +9,23 @@ const productionCsp =
 export default defineConfig({
   plugins: [
     react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: [],
+      manifest: {
+        name: 'Glowmory',
+        short_name: 'Glowmory',
+        description: "Good days don't go. They glow.",
+        theme_color: '#FFE5D4',
+        background_color: '#8E7CC3',
+        display: 'standalone',
+        icons: [],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,woff2,woff}'],
+        cleanupOutdatedCaches: true,
+      },
+    }),
     {
       name: 'production-security-policy',
       apply: 'build',
