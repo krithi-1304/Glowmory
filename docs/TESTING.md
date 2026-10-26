@@ -38,5 +38,6 @@ comfort testing still require manual review.
 - Unit tests: 8 passed across recall, import validation and palette foundations.
 - Chromium smoke flow: save a memory, reload, shake/surprise recall: passed.
 - This is a complete usable MVP, but the full specification still has deferred
-  depth: synthesized audio, device-motion shake permission, full eight-beat ritual,
-  detailed boids/quality tiers, plain list view, and optional camera hands.
+  depth: device-motion shake permission/drag wiring, detailed boids/quality tiers,
+  and optional camera hands. The eight ritual beats, breathing overlay and plain
+  list view are now represented in the UI.

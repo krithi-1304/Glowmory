@@ -63,22 +63,22 @@ textarea {
   text-shadow: 0 2px 18px rgb(74 63 107 / 22%);
 }
 .scene-copy h1 {
-  color: var(--paper);
+  color: #fff0d5;
   font-size: clamp(2.8rem, 10vw, 4.8rem);
   text-shadow:
     0 1px 0 #f7b6cc,
     0 2px 0 #f7b6cc,
     0 3px 0 #d895b1,
     0 4px 0 #d895b1,
-    0 8px 18px rgb(74 63 107 / 30%),
-    0 0 24px rgb(255 217 122 / 42%);
+    0 8px 18px rgb(20 14 45 / 45%),
+    0 0 24px rgb(255 217 122 / 52%);
 }
 .scene-copy .tagline {
   margin-top: 0.15rem;
-  color: var(--paper);
+  color: #fff0d5;
 }
 .scene-copy .helper {
-  color: var(--paper);
+  color: #f5d8df;
   opacity: 0.88;
 }
 h1 {
@@ -295,6 +295,90 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.ritual-card {
+  position: absolute;
+  z-index: 4;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  min-width: 10rem;
+  padding: 1rem 1.25rem;
+  border-radius: 18px;
+  background: rgb(255 246 236 / 90%);
+  color: var(--ink);
+  box-shadow: 0 10px 35px rgb(74 63 107 / 24%);
+  text-align: center;
+}
+.ritual-card p {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+.ritual-card strong {
+  font-family: var(--font-note);
+  font-size: 2rem;
+  font-weight: 400;
+}
+.ritual-card button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+}
+.memory-row {
+  border-bottom: 1px solid #ead4cc;
+  padding: 0.7rem 0;
+}
+.memory-row p {
+  margin: 0.2rem 0;
+}
+.memory-row small {
+  color: #8d6f93;
+}
+.breathing-overlay {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.45rem;
+  background: rgb(74 63 107 / 78%);
+  color: var(--paper);
+  text-align: center;
+}
+.breath-orb {
+  width: 10rem;
+  height: 10rem;
+  margin-bottom: 1rem;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 60px var(--gold);
+  animation: breathe 10s ease-in-out infinite;
+}
+.breathing-overlay p {
+  margin: 0;
+  font-family: var(--font-note);
+  font-size: 2.4rem;
+}
+.breathing-overlay small {
+  margin-bottom: 1rem;
+}
+.breathing-overlay button {
+  background: var(--paper);
+}
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(0.78);
+    opacity: 0.72;
+  }
+  40% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
 }
 @media (max-width: 480px) {
   .scene-actions {

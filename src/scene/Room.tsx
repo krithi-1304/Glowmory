@@ -12,20 +12,43 @@ import { feelingColors } from './palette';
 
 const fireflyColors = Object.values(feelingColors);
 
+function NightBackdrop() {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2;
+    canvas.height = 512;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    const gradient = context.createLinearGradient(0, 0, 0, 512);
+    gradient.addColorStop(0, '#352b5d');
+    gradient.addColorStop(0.48, '#65568f');
+    gradient.addColorStop(1, '#d69292');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 2, 512);
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+  return (
+    <mesh position={[0, 0.8, -1.1]} scale={[14, 8, 1]}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
+    </mesh>
+  );
+}
+
 function Window() {
   return (
     <group position={[-2.8, 2.45, -0.4]}>
       <mesh>
         <planeGeometry args={[3.2, 2.4]} />
-        <meshBasicMaterial color="#9b8ad0" />
+        <meshBasicMaterial color="#514476" />
       </mesh>
       <mesh position={[0, 0, 0.02]}>
         <planeGeometry args={[3.05, 2.25]} />
-        <meshBasicMaterial color="#b9a7e8" transparent opacity={0.7} />
+        <meshBasicMaterial color="#7969a6" transparent opacity={0.58} />
       </mesh>
       <mesh position={[0, 0, 0.06]}>
         <ringGeometry args={[0.36, 0.41, 32, 1, 0.5, Math.PI * 1.5]} />
-        <meshBasicMaterial color="#fff0b8" />
+        <meshBasicMaterial color="#ffd97a" toneMapped={false} />
       </mesh>
       <mesh position={[0, 0, 0.05]}>
         <boxGeometry args={[0.08, 2.3, 0.08]} />
@@ -153,13 +176,22 @@ function Jar() {
           ]}
         />
         <MeshTransmissionMaterial
-          color="#d9e9ed"
-          thickness={0.18}
-          roughness={0.12}
+          color="#b9b5df"
+          thickness={0.24}
+          roughness={0.08}
           transmission={0.92}
           ior={1.35}
           chromaticAberration={0.03}
           samples={4}
+        />
+      </mesh>
+      <mesh position={[0, -0.35, 0]} scale={[0.96, 0.55, 0.96]}>
+        <sphereGeometry args={[0.78, 32, 18]} />
+        <meshBasicMaterial
+          color="#ffd97a"
+          transparent
+          opacity={0.16}
+          toneMapped={false}
         />
       </mesh>
       <mesh position={[0, 1.15, 0]}>
@@ -210,6 +242,20 @@ function Firefly({
   phase: number;
 }) {
   const ref = useRef<THREE.Group>(null);
+  const glow = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    const gradient = context.createRadialGradient(32, 32, 1, 32, 32, 32);
+    gradient.addColorStop(0, `${color}cc`);
+    gradient.addColorStop(0.18, `${color}66`);
+    gradient.addColorStop(1, `${color}00`);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(canvas);
+  }, [color]);
   useFrame(({ clock }) => {
     if (ref.current) {
       ref.current.position.x =
@@ -222,11 +268,21 @@ function Firefly({
   return (
     <group ref={ref} position={position}>
       <mesh>
-        <sphereGeometry args={[0.045, 8, 8]} />
-        <meshBasicMaterial color={color} toneMapped={false} />
+        <sphereGeometry args={[0.035, 12, 12]} />
+        <meshBasicMaterial color="#fff6d0" toneMapped={false} />
       </mesh>
+      <sprite scale={[0.28, 0.28, 0.28]}>
+        <spriteMaterial
+          map={glow}
+          color={color}
+          transparent
+          opacity={0.9}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </sprite>
       <mesh position={[-0.055, 0, 0]} rotation={[0, 0, 0.25]}>
-        <planeGeometry args={[0.1, 0.05]} />
+        <circleGeometry args={[0.07, 16]} />
         <meshBasicMaterial
           color={color}
           transparent
@@ -235,7 +291,7 @@ function Firefly({
         />
       </mesh>
       <mesh position={[0.055, 0, 0]} rotation={[0, 0, -0.25]}>
-        <planeGeometry args={[0.1, 0.05]} />
+        <circleGeometry args={[0.07, 16]} />
         <meshBasicMaterial
           color={color}
           transparent
@@ -255,8 +311,9 @@ function SceneTitle() {
 function RoomScene() {
   return (
     <>
-      <color attach="background" args={['#8e7cc3']} />
-      <ambientLight intensity={0.75} color="#ffe5d4" />
+      <color attach="background" args={['#352b5d']} />
+      <NightBackdrop />
+      <ambientLight intensity={0.42} color="#d7c5ff" />
       <Window />
       <FairyLights />
       <Shelf />

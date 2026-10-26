@@ -5,6 +5,7 @@ import { useMemoryStore } from '../store/memoryStore';
 import type { FeelingId } from '../store/types';
 import { exportData, parseImport } from '../storage/exportImport';
 import { playBirthRitual } from '../ritual/birthRitual';
+import { playChime } from '../audio/engine';
 
 const feelings = Object.entries(strings.feelings) as [FeelingId, string][];
 
@@ -22,16 +23,34 @@ export function App() {
   const merge = useMemoryStore((s) => s.merge);
   const clear = useMemoryStore((s) => s.clear);
   const [panel, setPanel] = useState<
-    'write' | 'low' | 'settings' | 'reader' | 'sleeping' | null
+    'write' | 'low' | 'settings' | 'reader' | 'sleeping' | 'list' | null
   >(null);
   const [text, setText] = useState('');
   const [sense, setSense] = useState('');
   const [feeling, setFeeling] = useState<FeelingId>('proud');
   const [notice, setNotice] = useState('');
+  const [ritualStage, setRitualStage] = useState(0);
+  const [breathing, setBreathing] = useState(false);
   const ritualRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPanel(null);
+      if (event.key.toLowerCase() === 's' && !panel) setPanel('low');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panel]);
+  useEffect(() => {
+    if (!ritualStage) return;
+    const timer = window.setInterval(
+      () => setRitualStage((stage) => (stage >= 8 ? 0 : stage + 1)),
+      settings.calmMode ? 375 : 1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [ritualStage, settings.calmMode]);
   const save = async () => {
     if (!text.trim()) {
       setNotice(strings.write.emptyHint);
@@ -42,6 +61,8 @@ export function App() {
     setSense('');
     setPanel(null);
     setNotice('A new firefly was born.');
+    setRitualStage(1);
+    if (settings.sound) playChime(settings.volume);
     playBirthRitual(ritualRef.current, settings.calmMode, memories.length >= 2);
     void memory;
   };
@@ -92,6 +113,26 @@ export function App() {
           Settings
         </button>
       </nav>
+      {ritualStage > 0 && (
+        <div className="ritual-card" role="status">
+          <p>Beat {ritualStage} of 8</p>
+          <strong>
+            {
+              [
+                'Fold',
+                'Glow',
+                'Melt',
+                'Gather',
+                'Drip',
+                'Land',
+                'Pulse',
+                'Awaken',
+              ][ritualStage - 1]
+            }
+          </strong>
+          <button onClick={() => setRitualStage(0)}>Skip</button>
+        </div>
+      )}
       <div className="live-region" aria-live="polite">
         {notice}
       </div>
@@ -115,7 +156,9 @@ export function App() {
                     ? 'Memory'
                     : panel === 'sleeping'
                       ? 'Sleeping memories'
-                      : 'Settings'
+                      : panel === 'list'
+                        ? 'Memory list'
+                        : 'Settings'
             }
           >
             <button
@@ -198,6 +241,9 @@ export function App() {
                   <button onClick={() => setPanel(null)}>
                     {strings.low.done}
                   </button>
+                  <button onClick={() => setBreathing(true)}>
+                    Breathe with it
+                  </button>
                 </div>
                 <button
                   className="text-button"
@@ -279,6 +325,9 @@ export function App() {
                   <button onClick={() => setPanel('sleeping')}>
                     Sleeping shelf
                   </button>
+                  <button onClick={() => setPanel('list')}>
+                    Plain memory list
+                  </button>
                   <button
                     className="danger-button"
                     onClick={() => {
@@ -315,7 +364,35 @@ export function App() {
                 )}
               </>
             )}
+            {panel === 'list' && (
+              <>
+                <p className="panel-kicker">A simple view</p>
+                <h2>All memories</h2>
+                {memories.map((memory) => (
+                  <article className="memory-row" key={memory.id}>
+                    <strong>{strings.feelings[memory.feeling]}</strong>
+                    <p>{memory.text}</p>
+                    <small>
+                      {new Date(memory.createdAt).toLocaleDateString()}
+                    </small>
+                  </article>
+                ))}
+              </>
+            )}
           </section>
+        </div>
+      )}
+      {breathing && (
+        <div
+          className="breathing-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Breathing moment"
+        >
+          <div className="breath-orb" />
+          <p>Breathe with it</p>
+          <small>Let the light move slowly.</small>
+          <button onClick={() => setBreathing(false)}>I'm done</button>
         </div>
       )}
     </main>
