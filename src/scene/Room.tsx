@@ -47,10 +47,7 @@ function Window() {
         <planeGeometry args={[3.05, 2.25]} />
         <meshBasicMaterial color="#3f3569" transparent opacity={0.7} />
       </mesh>
-      <mesh position={[0, 0, 0.06]}>
-        <ringGeometry args={[0.36, 0.41, 32, 1, 0.5, Math.PI * 1.5]} />
-        <meshBasicMaterial color="#ffd97a" toneMapped={false} />
-      </mesh>
+      <Moon />
       <mesh position={[0, 0, 0.05]}>
         <boxGeometry args={[0.08, 2.3, 0.08]} />
         <meshBasicMaterial color="#ffe5d4" />
@@ -60,6 +57,51 @@ function Window() {
         <meshBasicMaterial color="#ffe5d4" />
       </mesh>
       <Stars count={28} />
+    </group>
+  );
+}
+
+function Moon() {
+  const halo = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    const gradient = context.createRadialGradient(64, 64, 12, 64, 64, 64);
+    gradient.addColorStop(0, 'rgb(255 232 168 / 70%)');
+    gradient.addColorStop(0.3, 'rgb(255 217 122 / 24%)');
+    gradient.addColorStop(1, 'rgb(255 217 122 / 0%)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+  return (
+    <group position={[0.62, 0.38, 0.1]}>
+      <sprite scale={[1.35, 1.35, 1.35]}>
+        <spriteMaterial
+          map={halo}
+          transparent
+          opacity={0.9}
+          depthWrite={false}
+        />
+      </sprite>
+      <mesh>
+        <sphereGeometry args={[0.38, 32, 20]} />
+        <meshBasicMaterial color="#ffe8ad" toneMapped={false} />
+      </mesh>
+      <mesh position={[0.14, 0.1, 0.04]}>
+        <sphereGeometry args={[0.36, 32, 20]} />
+        <meshBasicMaterial color="#3f3569" />
+      </mesh>
+      <mesh position={[-0.1, 0.14, 0.05]} scale={[0.12, 0.055, 0.02]}>
+        <sphereGeometry args={[1, 16, 8]} />
+        <meshBasicMaterial color="#e7c985" transparent opacity={0.42} />
+      </mesh>
+      <mesh position={[-0.16, -0.12, 0.05]} scale={[0.08, 0.04, 0.02]}>
+        <sphereGeometry args={[1, 16, 8]} />
+        <meshBasicMaterial color="#e7c985" transparent opacity={0.34} />
+      </mesh>
     </group>
   );
 }
@@ -90,23 +132,53 @@ function Stars({ count }: { count: number }) {
 }
 
 function FairyLights() {
-  const bulbs = useMemo(
+  const strands = useMemo(
     () =>
-      Array.from({ length: 18 }, (_, index) => {
-        const x = -3.8 + index * 0.45;
-        return [x, 2.98 - Math.pow((x + 0.1) / 4, 2) * 0.35, 0.15] as [
-          number,
-          number,
-          number,
-        ];
-      }),
+      Array.from({ length: 13 }, (_, index) => ({
+        x: -4.2 + index * 0.7,
+        length: 1.4 + (index % 4) * 0.28,
+      })),
     [],
   );
   return (
     <group>
-      {bulbs.map((position, index) => (
-        <Bulb key={index} position={position} index={index} />
+      <mesh position={[0, 3.08, 0.18]}>
+        <boxGeometry args={[8.8, 0.025, 0.025]} />
+        <meshBasicMaterial color="#5d507e" />
+      </mesh>
+      {strands.map((strand, index) => (
+        <LightString key={index} {...strand} index={index} />
       ))}
+    </group>
+  );
+}
+
+function LightString({
+  x,
+  length,
+  index,
+}: {
+  x: number;
+  length: number;
+  index: number;
+}) {
+  const bulbCount = Math.max(3, Math.round(length * 2.5));
+  return (
+    <group>
+      <mesh position={[x, 3.08 - length / 2, 0.18]}>
+        <cylinderGeometry args={[0.009, 0.009, length, 6]} />
+        <meshBasicMaterial color="#63567e" />
+      </mesh>
+      {Array.from({ length: bulbCount }, (_, bulbIndex) => {
+        const y = 3.08 - ((bulbIndex + 1) / (bulbCount + 1)) * length;
+        return (
+          <Bulb
+            key={bulbIndex}
+            position={[x, y, 0.22]}
+            index={index * 3 + bulbIndex}
+          />
+        );
+      })}
     </group>
   );
 }
@@ -119,6 +191,19 @@ function Bulb({
   index: number;
 }) {
   const ref = useRef<THREE.Mesh>(null);
+  const glow = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    const gradient = context.createRadialGradient(24, 24, 1, 24, 24, 24);
+    gradient.addColorStop(0, 'rgb(255 233 163 / 80%)');
+    gradient.addColorStop(1, 'rgb(255 217 122 / 0%)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 48, 48);
+    return new THREE.CanvasTexture(canvas);
+  }, []);
   useFrame(({ clock }) => {
     if (ref.current)
       ref.current.scale.setScalar(
@@ -127,8 +212,16 @@ function Bulb({
   });
   return (
     <mesh ref={ref} position={position}>
-      <sphereGeometry args={[0.07, 12, 12]} />
+      <sphereGeometry args={[0.045, 12, 12]} />
       <meshBasicMaterial color="#ffd97a" toneMapped={false} />
+      <sprite scale={[0.2, 0.2, 0.2]}>
+        <spriteMaterial
+          map={glow}
+          transparent
+          opacity={0.85}
+          depthWrite={false}
+        />
+      </sprite>
     </mesh>
   );
 }
