@@ -1,0 +1,60 @@
+* {
+  box-sizing: border-box;
+}
+html {
+  color: var(--ink);
+  background: var(--wall);
+  font-family: var(--font-ui);
+  font-synthesis: none;
+  line-height: 1.6;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--ink) var(--paper);
+}
+body {
+  margin: 0;
+  min-width: 280px;
+}
+::selection {
+  background: var(--mint);
+  color: var(--ink);
+}
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 5px;
+}
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  caret-color: var(--ink);
+}
+.app-shell {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+h1 {
+  margin: 0;
+  font-family: var(--font-note);
+  font-size: clamp(3.5rem, 12vw, 6rem);
+  font-weight: 400;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.tagline {
+  margin: 1.25rem 0 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-wrap: balance;
+}
+.helper {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  text-wrap: balance;
+}

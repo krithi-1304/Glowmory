@@ -1,0 +1,12 @@
+node_modules
+dist
+.tools
+.npm-cache
+package-lock.json
+glowmory-codex-kit
+.agents
+.impeccable
+test-results
+playwright-report
+CODEX_BUILD_BRIEF.md
+docs/BRIEF.md
