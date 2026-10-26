@@ -258,16 +258,20 @@ function Firefly({
   }, [color]);
   useFrame(({ clock, pointer }) => {
     if (ref.current) {
-      const pulse = 0.82 + Math.sin(clock.elapsedTime * 2.4 + phase) * 0.18;
-      const drift = 0.06;
+      const pulse =
+        0.72 +
+        Math.sin(clock.elapsedTime * (1.8 + phase * 0.03) + phase) * 0.28;
+      const drift = 0.045;
       ref.current.position.x =
         position[0] +
-        Math.sin(clock.elapsedTime * 0.45 + phase) * 0.16 +
+        Math.sin(clock.elapsedTime * 0.45 + phase) * 0.18 +
         (pointer.x * 0.35 - position[0]) * drift;
       ref.current.position.y =
         position[1] +
-        Math.cos(clock.elapsedTime * 0.6 + phase) * 0.14 +
+        Math.cos(clock.elapsedTime * 0.6 + phase) * 0.16 +
         (pointer.y * 0.28 - position[1]) * drift;
+      ref.current.position.z =
+        position[2] + Math.sin(clock.elapsedTime * 0.3 + phase) * 0.08;
       ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.7 + phase) * 0.3;
       ref.current.scale.setScalar(pulse);
     }
@@ -288,25 +292,7 @@ function Firefly({
           depthWrite={false}
         />
       </sprite>
-      <mesh position={[-0.055, 0, 0]} rotation={[0, 0, 0.25]}>
-        <circleGeometry args={[0.07, 16]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.55}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      <mesh position={[0.055, 0, 0]} rotation={[0, 0, -0.25]}>
-        <circleGeometry args={[0.07, 16]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.55}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      <pointLight color={color} intensity={0.16} distance={0.55} />
+      <pointLight color={color} intensity={0.08} distance={0.45} />
     </group>
   );
 }

@@ -123,20 +123,20 @@ export function App() {
           className="paper-tag paper-tag--write"
           onClick={() => setPanel('write')}
         >
-          <span aria-hidden="true">✦</span> Write a memory
+          <span aria-hidden="true">✦</span> leave a little light
         </button>
         <button
           className="paper-tag paper-tag--shake"
           onClick={() => setPanel('low')}
         >
-          <span aria-hidden="true">◌</span> Find a spark
+          <span aria-hidden="true">◌</span> ask the jar
         </button>
         <button
           className="quiet-button paper-tag"
           onClick={() => setPanel('settings')}
           aria-label="Settings"
         >
-          Jar settings
+          tend the jar
         </button>
       </nav>
       {ritualStage > 0 && (

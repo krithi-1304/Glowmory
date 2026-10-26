@@ -43,7 +43,7 @@ textarea {
   position: relative;
   overflow: hidden;
   padding: 0;
-  background: var(--sky-top);
+  background: #1d1838;
 }
 .room-stage {
   position: absolute;
@@ -107,13 +107,14 @@ h1 {
 .scene-actions {
   position: absolute;
   z-index: 2;
-  bottom: 1.5rem;
-  left: 0;
-  right: 0;
+  bottom: 1.65rem;
+  left: 1.35rem;
+  right: 1.35rem;
   display: flex;
-  justify-content: center;
-  gap: 0.65rem;
-  padding: 0 1rem;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0;
+  pointer-events: none;
 }
 button {
   border: 0;
@@ -128,15 +129,28 @@ button {
     box-shadow 160ms ease;
 }
 .paper-tag {
+  position: relative;
   border-radius: 8px 11px 7px 10px;
   background: #fff4e5;
   box-shadow:
-    0 8px 20px rgb(39 24 66 / 24%),
+    0 12px 28px rgb(10 7 29 / 35%),
     inset 0 -2px 0 rgb(198 141 132 / 20%);
   font-family: var(--font-note);
-  font-size: 1.22rem;
+  font-size: 1.28rem;
   letter-spacing: 0.01em;
   transform: rotate(-1deg);
+  pointer-events: auto;
+}
+.paper-tag::before {
+  content: '';
+  position: absolute;
+  width: 0.42rem;
+  height: 0.42rem;
+  top: -0.22rem;
+  left: 50%;
+  border-radius: 50%;
+  background: #d99186;
+  box-shadow: 0 1px 3px rgb(54 28 48 / 35%);
 }
 .paper-tag:nth-child(2) {
   transform: rotate(1.2deg);
@@ -166,10 +180,15 @@ button:disabled {
   cursor: not-allowed;
 }
 .quiet-button {
-  background: rgb(255 246 236 / 68%);
-  font-family: var(--font-ui);
-  font-size: 0.78rem;
-  transform: rotate(0.5deg);
+  align-self: end;
+  margin-left: auto;
+  padding: 0.45rem 0.7rem;
+  background: rgb(255 246 236 / 14%);
+  color: #ffe9d4;
+  box-shadow: none;
+  font-family: var(--font-note);
+  font-size: 1rem;
+  transform: rotate(1.5deg);
 }
 .live-region {
   position: absolute;
@@ -183,7 +202,8 @@ button:disabled {
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgb(74 63 107 / 36%);
+  background: rgb(19 13 42 / 72%);
+  backdrop-filter: blur(4px);
 }
 .panel {
   position: relative;
@@ -192,7 +212,16 @@ button:disabled {
   overflow: auto;
   padding: clamp(1.35rem, 4vw, 2.5rem);
   border-radius: 10px 19px 13px 17px;
-  background: linear-gradient(145deg, #fff8ef 0%, #fff0dc 100%);
+  background: linear-gradient(145deg, #fff8ef 0%, #ffefd9 100%);
+  background-image:
+    linear-gradient(rgb(255 255 255 / 18%), rgb(255 255 255 / 18%)),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 1.7rem,
+      rgb(198 141 132 / 10%) 1.75rem,
+      transparent 1.8rem
+    );
   box-shadow:
     0 22px 55px rgb(31 20 58 / 36%),
     inset 0 -3px 0 rgb(198 141 132 / 16%);
