@@ -1,6 +1,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import {
   Bloom,
+  DepthOfField,
   EffectComposer,
   Noise,
   Vignette,
@@ -40,11 +41,11 @@ function Window() {
     <group position={[-2.8, 2.45, -0.4]}>
       <mesh>
         <planeGeometry args={[3.2, 2.4]} />
-        <meshBasicMaterial color="#514476" />
+        <meshBasicMaterial color="#292347" />
       </mesh>
       <mesh position={[0, 0, 0.02]}>
         <planeGeometry args={[3.05, 2.25]} />
-        <meshBasicMaterial color="#7969a6" transparent opacity={0.58} />
+        <meshBasicMaterial color="#3f3569" transparent opacity={0.7} />
       </mesh>
       <mesh position={[0, 0, 0.06]}>
         <ringGeometry args={[0.36, 0.41, 32, 1, 0.5, Math.PI * 1.5]} />
@@ -212,11 +213,11 @@ function Jar() {
 function Fireflies() {
   const points = useMemo(
     () =>
-      Array.from({ length: 16 }, (_, index) => ({
+      Array.from({ length: 32 }, (_, index) => ({
         position: [
-          ((index % 4) - 1.5) * 0.25,
-          (((index * 7) % 9) - 4) * 0.12,
-          0.4 + (index % 3) * 0.05,
+          ((((index * 17) % 19) - 9) / 18) * 0.68,
+          ((((index * 13) % 23) - 11) / 25) * 0.9,
+          0.16 + ((index * 7) % 9) * 0.08,
         ] as [number, number, number],
         color: fireflyColors[index % fireflyColors.length]!,
         phase: index * 0.7,
@@ -242,6 +243,8 @@ function Firefly({
   phase: number;
 }) {
   const ref = useRef<THREE.Group>(null);
+  const wingLeft = useRef<THREE.Mesh>(null);
+  const wingRight = useRef<THREE.Mesh>(null);
   const glow = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
@@ -274,6 +277,11 @@ function Firefly({
         position[2] + Math.sin(clock.elapsedTime * 0.3 + phase) * 0.08;
       ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.7 + phase) * 0.3;
       ref.current.scale.setScalar(pulse);
+      if (wingLeft.current && wingRight.current) {
+        const flap = Math.sin(clock.elapsedTime * 7 + phase) * 0.45;
+        wingLeft.current.rotation.y = 0.24 + flap;
+        wingRight.current.rotation.y = -0.24 - flap;
+      }
     }
   });
   return (
@@ -292,6 +300,36 @@ function Firefly({
           depthWrite={false}
         />
       </sprite>
+      <mesh
+        ref={wingLeft}
+        position={[-0.045, 0.025, 0]}
+        rotation={[0, 0.24, 0.25]}
+        scale={[0.55, 1.35, 1]}
+      >
+        <circleGeometry args={[0.055, 16]} />
+        <meshBasicMaterial
+          color="#fff1c4"
+          transparent
+          opacity={0.2}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh
+        ref={wingRight}
+        position={[0.045, 0.025, 0]}
+        rotation={[0, -0.24, -0.25]}
+        scale={[0.55, 1.35, 1]}
+      >
+        <circleGeometry args={[0.055, 16]} />
+        <meshBasicMaterial
+          color="#fff1c4"
+          transparent
+          opacity={0.2}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
       <pointLight color={color} intensity={0.08} distance={0.45} />
     </group>
   );
@@ -336,7 +374,7 @@ function CameraRig() {
 function RoomScene() {
   return (
     <>
-      <color attach="background" args={['#352b5d']} />
+      <color attach="background" args={['#17132f']} />
       <CameraRig />
       <NightBackdrop />
       <ambientLight intensity={0.42} color="#d7c5ff" />
@@ -355,6 +393,12 @@ function RoomScene() {
       />
       <EffectComposer multisampling={0}>
         <Bloom intensity={0.65} luminanceThreshold={0.7} mipmapBlur />
+        <DepthOfField
+          focusDistance={0.02}
+          focalLength={0.035}
+          bokehScale={2.2}
+          height={480}
+        />
         <Vignette eskil={false} offset={0.28} darkness={0.45} />
         <Noise opacity={0.025} />
       </EffectComposer>
