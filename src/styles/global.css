@@ -62,7 +62,7 @@ textarea {
   display: block;
   width: 100% !important;
   height: 100% !important;
-  pointer-events: none;
+  pointer-events: auto;
 }
 .scene-copy {
   position: absolute;

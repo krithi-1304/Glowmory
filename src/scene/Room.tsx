@@ -3,10 +3,21 @@ import { Suspense } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { feelingColors } from './palette';
+import type { Memory } from '../store/types';
 
 const artwork = { width: 1536, height: 1024 };
 const jarInterior = { x: 642, y: 438, width: 270, height: 292 };
 const crawlerPath = { x: 875, y: 786, width: 185, height: 48 };
+const dropletProfile = [
+  new THREE.Vector2(0, -0.5),
+  new THREE.Vector2(0.1, -0.4),
+  new THREE.Vector2(0.19, -0.2),
+  new THREE.Vector2(0.25, 0.02),
+  new THREE.Vector2(0.23, 0.2),
+  new THREE.Vector2(0.15, 0.36),
+  new THREE.Vector2(0.07, 0.46),
+  new THREE.Vector2(0, 0.5),
+];
 
 const sceneVertexShader = `
   varying vec2 vUv;
@@ -203,10 +214,18 @@ function AnimatedBackdrop({
 
 function Fireflies({
   frame,
+  memories,
   calmMode,
+  birthKey,
+  birthMemoryId,
+  onSelectMemory,
 }: {
   frame: SceneFrame;
+  memories: Memory[];
   calmMode: boolean;
+  birthKey: number;
+  birthMemoryId: string | null;
+  onSelectMemory: (id: string) => void;
 }) {
   const { camera, size, viewport } = useThree();
   const plane = viewport.getCurrentViewport(camera, new THREE.Vector3(0, 0, 2));
@@ -214,29 +233,33 @@ function Fireflies({
     () => toWorldRect(jarInterior, frame, size, plane),
     [frame, plane, size],
   );
-  const points = useMemo(
-    () => [
-      { x: 0.23, y: 0.25, z: 0.02, phase: 0.4, color: feelingColors.proud },
-      { x: 0.74, y: 0.3, z: 0.09, phase: 1.7, color: feelingColors.loved },
-      { x: 0.47, y: 0.46, z: -0.06, phase: 3, color: feelingColors.peaceful },
-      { x: 0.24, y: 0.64, z: 0.07, phase: 4.2, color: feelingColors.silly },
-      { x: 0.72, y: 0.63, z: -0.02, phase: 5.3, color: feelingColors.brave },
-      { x: 0.5, y: 0.78, z: 0.1, phase: 6.6, color: feelingColors.thankful },
-    ],
-    [],
-  );
-  const scale = jar.width * 0.5;
+  const count = Math.max(memories.length, 1);
+  const scale = jar.width * 0.5 * Math.min(1, Math.sqrt(8 / count));
   return (
     <group>
-      {points.map((fly) => (
-        <Firefly
-          key={fly.phase}
-          {...fly}
-          jar={jar}
-          scale={scale}
-          calmMode={calmMode}
-        />
-      ))}
+      {memories.map((memory, index) => {
+        const seed = memory.look?.seed ?? (index + 1) * 0.618;
+        const angle = seed * Math.PI * 2 + index * 2.399963;
+        const radius =
+          memories.length === 1
+            ? 0
+            : 0.07 + Math.sqrt((index + 0.5) / memories.length) * 0.21;
+        return (
+          <Firefly
+            key={memory.id}
+            memory={memory}
+            x={0.5 + Math.cos(angle) * radius}
+            y={0.5 + Math.sin(angle) * radius * 1.08}
+            phase={angle}
+            jar={jar}
+            scale={scale * THREE.MathUtils.clamp(memory.look?.size ?? 1, 0.75, 1.25)}
+            calmMode={calmMode}
+            birthKey={birthKey}
+            birthMemoryId={birthMemoryId}
+            onSelectMemory={onSelectMemory}
+          />
+        );
+      })}
     </group>
   );
 }
@@ -365,77 +388,16 @@ function Caterpillar({
   );
 }
 
-function Firefly({
-  x,
-  y,
-  z,
-  phase,
-  color,
-  jar,
-  scale,
-  calmMode,
-}: {
-  x: number;
-  y: number;
-  z: number;
-  phase: number;
-  color: string;
-  jar: WorldRect;
-  scale: number;
-  calmMode: boolean;
-}) {
-  const ref = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    const time =
-      clock.elapsedTime * (calmMode ? 0.14 : 0.25 + phase * 0.009) + phase;
-    const dx = Math.cos(time) * 0.14 + Math.cos(time * 0.59 + phase) * 0.08;
-    const dy = -Math.sin(time) * 0.11 - Math.sin(time * 0.59 + phase) * 0.06;
-    if (!ref.current) return;
-    ref.current.position.set(
-      jar.left +
-        jar.width *
-          (x + Math.sin(time) * 0.12 + Math.sin(time * 0.59 + phase) * 0.055),
-      jar.top -
-        jar.height *
-          (y + Math.cos(time) * 0.1 + Math.cos(time * 0.59 + phase) * 0.045),
-      2 + z + Math.sin(time * 0.38 + phase) * 0.08,
-    );
-    ref.current.rotation.z = Math.atan2(dy, dx) + Math.PI;
-  });
-  return (
-    <group ref={ref}>
-      <FireflyModel
-        color={color}
-        phase={phase}
-        scale={scale}
-        calmMode={calmMode}
-      />
-    </group>
-  );
-}
+const glowTextures = new Map<string, THREE.CanvasTexture>();
 
-function FireflyModel({
-  color,
-  phase,
-  scale,
-  calmMode = false,
-}: {
-  color: string;
-  phase: number;
-  scale: number;
-  calmMode?: boolean;
-}) {
-  const lantern = useRef<THREE.MeshBasicMaterial>(null);
-  const halo = useRef<THREE.SpriteMaterial>(null);
-  const lanternLight = useRef<THREE.PointLight>(null);
-  const wingLeft = useRef<THREE.Mesh>(null);
-  const wingRight = useRef<THREE.Mesh>(null);
-  const glow = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const context = canvas.getContext('2d');
-    if (!context) return null;
+function getGlowTexture(color: string) {
+  const cached = glowTextures.get(color);
+  if (cached) return cached;
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  if (context) {
     const gradient = context.createRadialGradient(32, 32, 1, 32, 32, 32);
     gradient.addColorStop(0, 'rgb(255 248 230 / 100%)');
     gradient.addColorStop(0.12, `${color}ee`);
@@ -443,89 +405,185 @@ function FireflyModel({
     gradient.addColorStop(1, `${color}00`);
     context.fillStyle = gradient;
     context.fillRect(0, 0, 64, 64);
-    return new THREE.CanvasTexture(canvas);
-  }, [color]);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  glowTextures.set(color, texture);
+  return texture;
+}
+
+function Firefly({
+  memory,
+  x,
+  y,
+  phase,
+  jar,
+  scale,
+  calmMode,
+  birthKey,
+  birthMemoryId,
+  onSelectMemory,
+}: {
+  memory: Memory;
+  x: number;
+  y: number;
+  phase: number;
+  jar: WorldRect;
+  scale: number;
+  calmMode: boolean;
+  birthKey: number;
+  birthMemoryId: string | null;
+  onSelectMemory: (id: string) => void;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  const lantern = useRef<THREE.MeshBasicMaterial>(null);
+  const halo = useRef<THREE.SpriteMaterial>(null);
+  const wingLeft = useRef<THREE.Mesh>(null);
+  const wingRight = useRef<THREE.Mesh>(null);
+  const birthStarted = useRef<number | null>(null);
+  const birthComplete = useRef(false);
+  const color = feelingColors[memory.feeling];
+  const wingSpan = 0.8 + THREE.MathUtils.clamp(memory.look?.wing ?? 0.5, 0, 1) * 0.4;
+  const seed = memory.look?.seed ?? 0.5;
+  const isBirthFly = birthKey > 0 && birthMemoryId === memory.id;
+  const glow = useMemo(() => getGlowTexture(color), [color]);
+
+  useEffect(() => {
+    if (isBirthFly) {
+      birthStarted.current = performance.now();
+      birthComplete.current = false;
+    }
+  }, [birthKey, isBirthFly]);
+
   useFrame(({ clock }) => {
-    const time = clock.elapsedTime;
+    if (!ref.current) return;
+    const time =
+      clock.elapsedTime * (calmMode ? 0.14 : 0.19 + seed * 0.07) + phase;
+    const dx = Math.cos(time) * 0.12 + Math.cos(time * 0.61 + phase) * 0.055;
+    const dy = -Math.sin(time) * 0.1 - Math.sin(time * 0.57 + phase) * 0.05;
+    const driftX = Math.sin(time * 0.41 + phase * 1.2) * 0.025;
+    const driftY = Math.cos(time * 0.37 + phase * 0.8) * 0.022;
+    const flightX = THREE.MathUtils.clamp(
+      x + Math.sin(time) * 0.1 + driftX,
+      0.12,
+      0.88,
+    );
+    const flightY = THREE.MathUtils.clamp(
+      y + Math.cos(time * 0.83) * 0.08 + driftY,
+      0.12,
+      0.88,
+    );
+    let positionX = flightX;
+    let positionY = flightY;
+    let birthElapsed = 0;
+    if (isBirthFly && birthStarted.current !== null) {
+      birthElapsed = (performance.now() - birthStarted.current) / 1000;
+      const driftOut = THREE.MathUtils.smoothstep(birthElapsed, 7.4, 8.6);
+      positionX = THREE.MathUtils.lerp(0.5, flightX, driftOut);
+      positionY = THREE.MathUtils.lerp(0.82, flightY, driftOut);
+      if (birthElapsed >= 8.6) {
+        birthComplete.current = true;
+        birthStarted.current = null;
+      }
+    }
+    ref.current.position.set(
+      jar.left + jar.width * positionX,
+      jar.top - jar.height * positionY,
+      2 + Math.sin(time * 0.31 + phase) * 0.07,
+    );
+    ref.current.rotation.z = Math.atan2(dy, dx) + Math.PI;
+
+    let reveal = 1;
+    if (isBirthFly && !birthComplete.current) {
+      if (birthStarted.current === null) {
+        ref.current.visible = false;
+        return;
+      }
+      reveal = THREE.MathUtils.smoothstep(birthElapsed, 5.7, 7.4);
+    }
+    ref.current.visible = reveal > 0.01;
+    ref.current.scale.setScalar(Math.max(reveal, 0.001));
+
     const pulse = Math.pow(
       0.5 +
         0.5 *
           Math.sin(time * Math.PI * 2 * (0.2 + (phase % 4) * 0.035) + phase),
       2.4,
     );
-    const flutter = time * (calmMode ? 6 : 15) + phase;
-    if (lantern.current) lantern.current.opacity = 0.1 + pulse * 0.9;
-    if (halo.current) halo.current.opacity = 0.12 + pulse * 0.82;
-    if (lanternLight.current)
-      lanternLight.current.intensity = 0.01 + pulse * 0.32;
+    const flutter = clock.elapsedTime * (calmMode ? 6 : 15) + phase;
+    if (lantern.current) lantern.current.opacity = (0.1 + pulse * 0.9) * reveal;
+    if (halo.current) halo.current.opacity = (0.12 + pulse * 0.82) * reveal;
     if (wingLeft.current)
       wingLeft.current.rotation.z = 0.48 + Math.sin(flutter) * 0.16;
     if (wingRight.current)
       wingRight.current.rotation.z = -0.48 + Math.sin(flutter + Math.PI) * 0.16;
   });
+
   return (
-    <group scale={scale}>
-      <mesh position={[-0.016, 0, 0]} scale={[0.082, 0.027, 0.025]}>
-        <sphereGeometry args={[1, 16, 10]} />
-        <meshBasicMaterial color="#38263e" />
-      </mesh>
-      <mesh position={[-0.077, 0, 0]} scale={[0.025, 0.023, 0.024]}>
-        <sphereGeometry args={[1, 14, 10]} />
-        <meshBasicMaterial color="#49334a" />
-      </mesh>
-      <mesh
-        ref={wingLeft}
-        position={[-0.015, 0.027, 0.012]}
-        scale={[0.045, 0.014, 0.005]}
-      >
-        <sphereGeometry args={[1, 14, 8]} />
-        <meshBasicMaterial
-          color="#f4dfe6"
-          transparent
-          opacity={0.32}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh
-        ref={wingRight}
-        position={[-0.015, -0.027, -0.012]}
-        scale={[0.045, 0.014, 0.005]}
-      >
-        <sphereGeometry args={[1, 14, 8]} />
-        <meshBasicMaterial
-          color="#e4dafa"
-          transparent
-          opacity={0.28}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh position={[0.083, 0, 0]} scale={[0.034, 0.027, 0.025]}>
-        <sphereGeometry args={[1, 14, 10]} />
-        <meshBasicMaterial
-          ref={lantern}
-          color={color}
-          transparent
-          toneMapped={false}
-        />
-      </mesh>
-      <sprite position={[0.083, 0, -0.015]} scale={[0.38, 0.38, 1]}>
-        <spriteMaterial
-          ref={halo}
-          map={glow}
-          color={color}
-          transparent
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </sprite>
-      <pointLight
-        ref={lanternLight}
-        position={[0.083, 0, 0.04]}
-        color={color}
-        intensity={0.1}
-        distance={0.7}
-        decay={2}
-      />
+    <group
+      ref={ref}
+      visible={!isBirthFly}
+      scale={isBirthFly ? 0.001 : 1}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelectMemory(memory.id);
+      }}
+    >
+      <group scale={scale}>
+        <mesh position={[-0.016, 0, 0]} scale={[0.082, 0.027, 0.025]}>
+          <sphereGeometry args={[1, 16, 10]} />
+          <meshBasicMaterial color="#38263e" />
+        </mesh>
+        <mesh position={[-0.077, 0, 0]} scale={[0.025, 0.023, 0.024]}>
+          <sphereGeometry args={[1, 14, 10]} />
+          <meshBasicMaterial color="#49334a" />
+        </mesh>
+        <mesh
+          ref={wingLeft}
+          position={[-0.015, 0.027, 0.012]}
+          scale={[0.045 * wingSpan, 0.014, 0.005]}
+        >
+          <sphereGeometry args={[1, 14, 8]} />
+          <meshBasicMaterial
+            color="#f4dfe6"
+            transparent
+            opacity={0.32}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh
+          ref={wingRight}
+          position={[-0.015, -0.027, -0.012]}
+          scale={[0.045 * wingSpan, 0.014, 0.005]}
+        >
+          <sphereGeometry args={[1, 14, 8]} />
+          <meshBasicMaterial
+            color="#e4dafa"
+            transparent
+            opacity={0.28}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh position={[0.083, 0, 0]} scale={[0.034, 0.027, 0.025]}>
+          <sphereGeometry args={[1, 14, 10]} />
+          <meshBasicMaterial
+            ref={lantern}
+            color={color}
+            transparent
+            toneMapped={false}
+          />
+        </mesh>
+        <sprite position={[0.083, 0, -0.015]} scale={[0.38, 0.38, 1]}>
+          <spriteMaterial
+            ref={halo}
+            map={glow}
+            color={color}
+            transparent
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </sprite>
+      </group>
     </group>
   );
 }
@@ -533,22 +591,19 @@ function FireflyModel({
 function BirthRitual({
   birthKey,
   jar,
-  flyScale,
 }: {
   birthKey: number;
   jar: WorldRect;
-  flyScale: number;
 }) {
   const start = useRef(0);
   const note = useRef<THREE.Group>(null);
   const serum = useRef<THREE.Group>(null);
-  const newborn = useRef<THREE.Group>(null);
   const noteMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const serumMaterial = useRef<THREE.MeshBasicMaterial>(null);
   useEffect(() => {
     if (birthKey) start.current = performance.now();
   }, [birthKey]);
-  useFrame(({ clock, viewport, camera }) => {
+  useFrame(({ viewport, camera }) => {
     if (!birthKey || !start.current) return;
     const view = viewport.getCurrentViewport(
       camera,
@@ -591,17 +646,11 @@ function BirthRitual({
         ),
         2.55,
       );
-      serum.current.scale.setScalar(0.28 + Math.sin(t * 7) * 0.025);
+      const dropScale = 0.24 + Math.sin(t * 3.1) * 0.012;
+      serum.current.scale.set(dropScale, dropScale, dropScale);
       if (serumMaterial.current)
         serumMaterial.current.opacity =
           t < 3.1 ? (t - 2.5) / 0.6 : t > 5.8 ? 1 - (t - 5.8) / 0.6 : 0.9;
-    }
-    if (newborn.current) {
-      const awaken = THREE.MathUtils.smoothstep(t, 5.7, 7.4);
-      newborn.current.visible = t > 5.7;
-      newborn.current.position.set(targetX, targetY, 2.65);
-      newborn.current.rotation.z = Math.sin(clock.elapsedTime * 3.2) * 0.15;
-      newborn.current.scale.setScalar(flyScale * (0.05 + awaken * 0.95));
     }
   });
   return (
@@ -623,7 +672,7 @@ function BirthRitual({
       </group>
       <group ref={serum} visible={false}>
         <mesh>
-          <sphereGeometry args={[0.42, 24, 16]} />
+          <latheGeometry args={[dropletProfile, 28]} />
           <meshBasicMaterial
             ref={serumMaterial}
             color={feelingColors.proud}
@@ -638,23 +687,26 @@ function BirthRitual({
           distance={0.8}
         />
       </group>
-      <group ref={newborn} visible={false}>
-        <FireflyModel color={feelingColors.proud} phase={1.4} scale={1} />
-      </group>
     </group>
   );
 }
 
 function RoomScene({
   frame,
+  memories,
   birthKey,
+  birthMemoryId,
   calmMode,
   motionAllowed,
+  onSelectMemory,
 }: {
   frame: SceneFrame;
+  memories: Memory[];
   birthKey: number;
+  birthMemoryId: string | null;
   calmMode: boolean;
   motionAllowed: boolean;
+  onSelectMemory: (id: string) => void;
 }) {
   const { camera, size, viewport } = useThree();
   const plane = viewport.getCurrentViewport(camera, new THREE.Vector3(0, 0, 2));
@@ -666,25 +718,37 @@ function RoomScene({
     () => toWorldRect(crawlerPath, frame, size, plane),
     [frame, plane, size],
   );
-  const flyScale = jar.width * 0.67;
   return (
     <>
       <AnimatedBackdrop calmMode={calmMode} motionAllowed={motionAllowed} />
       <ambientLight intensity={1.25} color="#e7dfcd" />
       <directionalLight position={[-2, 4, 5]} intensity={1.4} color="#fff0d6" />
-      <Fireflies frame={frame} calmMode={calmMode} />
+      <Fireflies
+        frame={frame}
+        memories={memories}
+        calmMode={calmMode}
+        birthKey={birthKey}
+        birthMemoryId={birthMemoryId}
+        onSelectMemory={onSelectMemory}
+      />
       <Caterpillar path={crawler} jarWidth={jar.width} calmMode={calmMode} />
-      <BirthRitual birthKey={birthKey} jar={jar} flyScale={flyScale} />
+      <BirthRitual birthKey={birthKey} jar={jar} />
     </>
   );
 }
 
 export function Room({
+  memories,
   birthKey = 0,
+  birthMemoryId = null,
   calmMode = false,
+  onSelectMemory,
 }: {
+  memories: Memory[];
   birthKey?: number;
+  birthMemoryId?: string | null;
   calmMode?: boolean;
+  onSelectMemory: (id: string) => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const frame = useSceneFrame(stage);
@@ -726,9 +790,12 @@ export function Room({
             <Suspense fallback={null}>
               <RoomScene
                 frame={frame}
+                memories={memories}
                 birthKey={birthKey}
+                birthMemoryId={birthMemoryId}
                 calmMode={calmMode || prefersReducedMotion}
                 motionAllowed={!prefersReducedMotion}
+                onSelectMemory={onSelectMemory}
               />
             </Suspense>
           </Canvas>

@@ -25,6 +25,7 @@ interface MemoryState {
   setSettings: (patch: Partial<Settings>) => Promise<void>;
   merge: (memories: Memory[], settings: Settings) => Promise<void>;
   draw: (feeling: FeelingId | 'any') => Memory | null;
+  openMemory: (id: string) => Memory | null;
   clear: () => Promise<void>;
 }
 const persist = async (memories: Memory[], settings: Settings) =>
@@ -99,6 +100,20 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     const recentIds = [...state.recentIds, memory.id].slice(-3);
     const draws = state.draws + 1;
     set({ selected: memory, recentIds, draws });
+    void state.update(memory.id, {
+      openCount: memory.openCount + 1,
+      lastOpenedAt: Date.now(),
+    });
+    return memory;
+  },
+  openMemory: (id) => {
+    const state = get();
+    const memory = state.memories.find((item) => item.id === id);
+    if (!memory) return null;
+    set({
+      selected: memory,
+      recentIds: [...state.recentIds, memory.id].slice(-3),
+    });
     void state.update(memory.id, {
       openCount: memory.openCount + 1,
       lastOpenedAt: Date.now(),

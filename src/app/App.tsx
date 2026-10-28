@@ -22,6 +22,7 @@ export function App() {
   const draws = useMemoryStore((s) => s.draws);
   const add = useMemoryStore((s) => s.add);
   const draw = useMemoryStore((s) => s.draw);
+  const openMemory = useMemoryStore((s) => s.openMemory);
   const update = useMemoryStore((s) => s.update);
   const setSettings = useMemoryStore((s) => s.setSettings);
   const merge = useMemoryStore((s) => s.merge);
@@ -35,6 +36,9 @@ export function App() {
   const [notice, setNotice] = useState('');
   const [ritualStage, setRitualStage] = useState(0);
   const [birthKey, setBirthKey] = useState(0);
+  const [birthMemoryId, setBirthMemoryId] = useState<string | null>(null);
+  const [jarReply, setJarReply] = useState('');
+  const [comfortCount, setComfortCount] = useState(0);
   const [breathing, setBreathing] = useState(false);
   const ritualRef = useRef<HTMLDivElement>(null);
   const audioUnlocked = useRef(false);
@@ -110,22 +114,29 @@ export function App() {
     setSense('');
     setPanel(null);
     setNotice('A new firefly was born.');
+    setBirthMemoryId(memory.id);
     setBirthKey((key) => key + 1);
     setRitualStage(1);
     if (settings.sound) playChime(settings.volume);
     playBirthRitual(ritualRef.current, settings.calmMode, memories.length >= 2);
-    void memory;
   };
   const choose = (id: FeelingId | 'any') => {
     const memory = draw(id);
-    if (!memory)
-      setNotice(
-        id === 'any' ? strings.low.emptyJar : strings.low.noneOfFeeling,
-      );
-    else {
+    if (!memory) {
+      const index = comfortCount % strings.low.comforting.length;
+      const message = strings.low.comforting[index]!;
+      setComfortCount((count) => count + 1);
+      setJarReply(message);
+      setNotice(message);
+    } else {
+      setJarReply('');
       setNotice('A little light is coming closer.');
       setPanel('reader');
     }
+  };
+  const selectFireflyMemory = (id: string) => {
+    if (!openMemory(id)) return;
+    setPanel('reader');
   };
   const download = () => {
     const blob = new Blob([exportData(memories, settings)], {
@@ -146,7 +157,13 @@ export function App() {
     );
   return (
     <main ref={ritualRef} className="app-shell app-shell--scene">
-      <Room birthKey={birthKey} calmMode={settings.calmMode} />
+      <Room
+        memories={memories}
+        birthKey={birthKey}
+        birthMemoryId={birthMemoryId}
+        calmMode={settings.calmMode}
+        onSelectMemory={selectFireflyMemory}
+      />
       <section className="scene-copy" aria-label="Glowmory">
         <img
           className="brand-mark"
@@ -166,7 +183,10 @@ export function App() {
         </button>
         <button
           className="paper-tag paper-tag--shake"
-          onClick={() => setPanel('low')}
+          onClick={() => {
+            setJarReply('');
+            setPanel('low');
+          }}
         >
           <span aria-hidden="true">◌</span> ask the jar
         </button>
@@ -286,6 +306,11 @@ export function App() {
                 >
                   {strings.low.surprise}
                 </button>
+                {jarReply && (
+                  <p className="gentle-note" role="status">
+                    {jarReply}
+                  </p>
+                )}
                 {draws >= 3 && (
                   <p className="gentle-note">{strings.low.enough}</p>
                 )}

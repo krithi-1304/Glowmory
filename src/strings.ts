@@ -23,6 +23,13 @@ export const strings = {
     emptyJar: 'Nothing here yet. Want to put in the first good thing?',
     noneOfFeeling:
       "I don't have one for that yet. Want to try another feeling?",
+    comforting: [
+      'You do not have to solve everything tonight. One slow breath is enough for this moment.',
+      'Small steps count, even when they feel quiet.',
+      'You are allowed to pause and begin again when you are ready.',
+      'The next kind thing can be very small.',
+      'This feeling can be here without deciding your whole story.',
+    ],
     breathe: 'Breathe with it',
     another: 'Another one',
     done: "I'm done",
