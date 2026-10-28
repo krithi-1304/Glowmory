@@ -99,10 +99,11 @@ textarea {
 .scene-copy .tagline {
   margin-top: 0.15rem;
   color: #fff0d5;
+  text-shadow: 0 2px 10px rgb(21 16 45 / 88%);
 }
 .scene-copy .helper {
   color: #f5d8df;
-  opacity: 0.88;
+  text-shadow: 0 2px 9px rgb(21 16 45 / 92%);
 }
 h1 {
   margin: 0;
@@ -133,9 +134,11 @@ h1 {
   bottom: 1.65rem;
   left: 1.35rem;
   right: 1.35rem;
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  max-width: 54rem;
+  margin-inline: auto;
   padding: 0;
   pointer-events: none;
 }
@@ -151,67 +154,53 @@ button {
     transform 160ms ease,
     box-shadow 160ms ease;
 }
-.paper-tag {
-  position: relative;
-  border-radius: 8px 11px 7px 10px;
-  background: #fff4e5;
+.scene-action-button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 3.15rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgb(255 217 122 / 58%);
+  border-radius: 14px;
+  background: rgb(255 246 236 / 96%);
+  color: #443653;
   box-shadow:
-    0 12px 28px rgb(10 7 29 / 35%),
-    inset 0 -2px 0 rgb(198 141 132 / 20%);
-  font-family: var(--font-note);
-  font-size: 1.28rem;
-  letter-spacing: 0.01em;
-  transform: rotate(-1deg);
+    0 7px 22px rgb(10 7 29 / 32%),
+    inset 0 1px 0 rgb(255 255 255 / 86%);
+  font-family: var(--font-ui);
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
   pointer-events: auto;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
 }
-.paper-tag::before {
-  content: '';
-  position: absolute;
-  width: 0.42rem;
-  height: 0.42rem;
-  top: -0.22rem;
-  left: 50%;
-  border-radius: 50%;
-  background: #d99186;
-  box-shadow: 0 1px 3px rgb(54 28 48 / 35%);
+.scene-action-icon {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  fill: currentColor;
+  color: #9a684e;
 }
-.paper-tag:nth-child(2) {
-  transform: rotate(1.2deg);
+.scene-action-button:last-child .scene-action-icon {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.5;
 }
-.paper-tag span {
-  color: #c7818f;
-  margin-right: 0.25rem;
-}
-.paper-tag--shake {
-  background: #e6f4dc;
-}
-.paper-tag--shake span {
-  color: #799a73;
-}
-.paper-tag:hover {
-  transform: translateY(-3px) rotate(-1deg) scale(1.04);
-}
-.paper-tag:nth-child(2):hover {
-  transform: translateY(-3px) rotate(1.2deg) scale(1.04);
-}
-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 22px rgb(74 63 107 / 28%);
+.scene-action-button:hover {
+  transform: translateY(-2px);
+  background: #fffaf4;
+  box-shadow: 0 10px 26px rgb(10 7 29 / 38%);
 }
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-.quiet-button {
-  align-self: end;
-  margin-left: auto;
-  padding: 0.45rem 0.7rem;
-  background: rgb(255 246 236 / 14%);
-  color: #ffe9d4;
-  box-shadow: none;
-  font-family: var(--font-note);
-  font-size: 1rem;
-  transform: rotate(1.5deg);
 }
 .live-region {
   position: absolute;
@@ -470,11 +459,20 @@ button:disabled {
 }
 @media (max-width: 480px) {
   .scene-actions {
-    bottom: 1rem;
+    right: 0.65rem;
+    bottom: max(0.8rem, env(safe-area-inset-bottom));
+    left: 0.65rem;
+    gap: 0.4rem;
   }
-  .scene-actions button {
-    padding: 0.55rem 0.72rem;
-    font-size: 0.82rem;
+  .scene-action-button {
+    min-height: 3rem;
+    gap: 0.24rem;
+    padding: 0.48rem 0.25rem;
+    font-size: 0.75rem;
+  }
+  .scene-action-icon {
+    width: 0.85rem;
+    height: 0.85rem;
   }
   .panel {
     border-radius: 18px;

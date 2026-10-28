@@ -176,26 +176,35 @@ export function App() {
       </section>
       <nav className="scene-actions" aria-label="Jar actions">
         <button
-          className="paper-tag paper-tag--write"
+          className="scene-action-button"
           onClick={() => setPanel('write')}
         >
-          <span aria-hidden="true">✦</span> leave a little light
+          <svg className="scene-action-icon" aria-hidden="true" viewBox="0 0 20 20">
+            <path d="M10 1.5 12 8l6.5 2-6.5 2-2 6.5L8 12l-6.5-2L8 8l2-6.5Z" />
+          </svg>
+          <span>Leave a Little Light</span>
         </button>
         <button
-          className="paper-tag paper-tag--shake"
+          className="scene-action-button"
           onClick={() => {
             setJarReply('');
             setPanel('low');
           }}
         >
-          <span aria-hidden="true">◌</span> ask the jar
+          <svg className="scene-action-icon" aria-hidden="true" viewBox="0 0 20 20">
+            <path d="M10 2.1a7.9 7.9 0 1 0 7.9 7.9A7.9 7.9 0 0 0 10 2.1Zm0 3.1a4.8 4.8 0 1 1-4.8 4.8A4.8 4.8 0 0 1 10 5.2Z" />
+          </svg>
+          <span>Ask the Jar</span>
         </button>
         <button
-          className="quiet-button paper-tag"
+          className="scene-action-button"
           onClick={() => setPanel('settings')}
           aria-label="Settings"
         >
-          tend the jar
+          <svg className="scene-action-icon" aria-hidden="true" viewBox="0 0 20 20">
+            <path d="M3 5.2h14M3 10h14M3 14.8h14" />
+          </svg>
+          <span>Tend the Jar</span>
         </button>
       </nav>
       {ritualStage > 0 && (
