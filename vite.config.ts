@@ -20,10 +20,17 @@ export default defineConfig({
         theme_color: '#FFE5D4',
         background_color: '#8E7CC3',
         display: 'standalone',
-        icons: [],
+        icons: [
+          {
+            src: 'assets/glowmory-tab.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
+        ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,woff}'],
+        globPatterns: ['**/*.{js,css,html,woff2,woff,png}'],
         cleanupOutdatedCaches: true,
       },
     }),

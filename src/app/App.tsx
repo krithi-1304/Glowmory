@@ -5,7 +5,11 @@ import { useMemoryStore } from '../store/memoryStore';
 import type { FeelingId } from '../store/types';
 import { exportData, parseImport } from '../storage/exportImport';
 import { playBirthRitual } from '../ritual/birthRitual';
-import { playChime } from '../audio/engine';
+import {
+  playChime,
+  startNightAmbience,
+  stopNightAmbience,
+} from '../audio/engine';
 
 const feelings = Object.entries(strings.feelings) as [FeelingId, string][];
 
@@ -30,8 +34,10 @@ export function App() {
   const [feeling, setFeeling] = useState<FeelingId>('proud');
   const [notice, setNotice] = useState('');
   const [ritualStage, setRitualStage] = useState(0);
+  const [birthKey, setBirthKey] = useState(0);
   const [breathing, setBreathing] = useState(false);
   const ritualRef = useRef<HTMLDivElement>(null);
+  const audioUnlocked = useRef(false);
   const enableMotion = async () => {
     const orientation =
       DeviceOrientationEvent as typeof DeviceOrientationEvent & {
@@ -51,6 +57,33 @@ export function App() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+  useEffect(() => {
+    if (!settings.sound) {
+      audioUnlocked.current = false;
+      stopNightAmbience();
+    } else if (audioUnlocked.current && !document.hidden) {
+      startNightAmbience(settings.volume, settings.calmMode);
+    }
+    const engage = () => {
+      if (audioUnlocked.current) return;
+      audioUnlocked.current = true;
+      if (settings.sound)
+        startNightAmbience(settings.volume, settings.calmMode);
+    };
+    const visibility = () => {
+      if (document.hidden) stopNightAmbience();
+      else if (audioUnlocked.current && settings.sound)
+        startNightAmbience(settings.volume, settings.calmMode);
+    };
+    window.addEventListener('pointerdown', engage);
+    window.addEventListener('keydown', engage);
+    document.addEventListener('visibilitychange', visibility);
+    return () => {
+      window.removeEventListener('pointerdown', engage);
+      window.removeEventListener('keydown', engage);
+      document.removeEventListener('visibilitychange', visibility);
+    };
+  }, [settings.sound, settings.volume, settings.calmMode]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setPanel(null);
@@ -77,6 +110,7 @@ export function App() {
     setSense('');
     setPanel(null);
     setNotice('A new firefly was born.');
+    setBirthKey((key) => key + 1);
     setRitualStage(1);
     if (settings.sound) playChime(settings.volume);
     playBirthRitual(ritualRef.current, settings.calmMode, memories.length >= 2);
@@ -112,8 +146,13 @@ export function App() {
     );
   return (
     <main ref={ritualRef} className="app-shell app-shell--scene">
-      <Room />
+      <Room birthKey={birthKey} calmMode={settings.calmMode} />
       <section className="scene-copy" aria-label="Glowmory">
+        <img
+          className="brand-mark"
+          src={`${import.meta.env.BASE_URL}assets/glowmory-jar-thread.png`}
+          alt="A glowing firefly inside a glass jar"
+        />
         <h1>{strings.appName}</h1>
         <p className="tagline">{strings.tagline}</p>
         <p className="helper">{strings.helper}</p>
@@ -292,9 +331,16 @@ export function App() {
                   <input
                     type="checkbox"
                     checked={settings.sound}
-                    onChange={(e) =>
-                      void setSettings({ sound: e.target.checked })
-                    }
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      void setSettings({ sound: enabled });
+                      if (enabled) {
+                        audioUnlocked.current = true;
+                        startNightAmbience(settings.volume, settings.calmMode);
+                      } else {
+                        stopNightAmbience();
+                      }
+                    }}
                   />
                 </label>
                 <label className="toggle-row">

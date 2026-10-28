@@ -1,341 +1,408 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import {
-  Bloom,
-  DepthOfField,
-  EffectComposer,
-  Noise,
-  Vignette,
-} from '@react-three/postprocessing';
-import { MeshTransmissionMaterial, Sparkles } from '@react-three/drei';
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+import { Suspense } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { feelingColors } from './palette';
 
-const fireflyColors = Object.values(feelingColors);
+const artwork = { width: 1536, height: 1024 };
+const jarInterior = { x: 642, y: 438, width: 270, height: 292 };
+const crawlerPath = { x: 875, y: 786, width: 185, height: 48 };
 
-function NightBackdrop() {
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2;
-    canvas.height = 512;
-    const context = canvas.getContext('2d');
-    if (!context) return null;
-    const gradient = context.createLinearGradient(0, 0, 0, 512);
-    gradient.addColorStop(0, '#352b5d');
-    gradient.addColorStop(0.48, '#65568f');
-    gradient.addColorStop(1, '#d69292');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 2, 512);
-    return new THREE.CanvasTexture(canvas);
-  }, []);
-  return (
-    <mesh position={[0, 0.8, -1.1]} scale={[14, 8, 1]}>
-      <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
-    </mesh>
-  );
-}
+const sceneVertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
 
-function Window() {
-  return (
-    <group position={[-2.8, 2.45, -0.4]}>
-      <mesh>
-        <planeGeometry args={[3.2, 2.4]} />
-        <meshBasicMaterial color="#292347" />
-      </mesh>
-      <mesh position={[0, 0, 0.02]}>
-        <planeGeometry args={[3.05, 2.25]} />
-        <meshBasicMaterial color="#3f3569" transparent opacity={0.7} />
-      </mesh>
-      <Moon />
-      <mesh position={[0, 0, 0.05]}>
-        <boxGeometry args={[0.08, 2.3, 0.08]} />
-        <meshBasicMaterial color="#ffe5d4" />
-      </mesh>
-      <mesh position={[0, 0, 0.05]}>
-        <boxGeometry args={[3.2, 0.08, 0.08]} />
-        <meshBasicMaterial color="#ffe5d4" />
-      </mesh>
-      <Stars count={28} />
-    </group>
-  );
-}
+const sceneFragmentShader = `
+  uniform sampler2D uMap;
+  uniform vec2 uResolution;
+  uniform float uTime;
+  varying vec2 vUv;
 
-function Moon() {
-  const halo = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-    const context = canvas.getContext('2d');
-    if (!context) return null;
-    const gradient = context.createRadialGradient(64, 64, 12, 64, 64, 64);
-    gradient.addColorStop(0, 'rgb(255 232 168 / 70%)');
-    gradient.addColorStop(0.3, 'rgb(255 217 122 / 24%)');
-    gradient.addColorStop(1, 'rgb(255 217 122 / 0%)');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 128, 128);
-    return new THREE.CanvasTexture(canvas);
-  }, []);
-  return (
-    <group position={[0.62, 0.38, 0.1]}>
-      <sprite scale={[1.35, 1.35, 1.35]}>
-        <spriteMaterial
-          map={halo}
-          transparent
-          opacity={0.9}
-          depthWrite={false}
-        />
-      </sprite>
-      <mesh>
-        <sphereGeometry args={[0.38, 32, 20]} />
-        <meshBasicMaterial color="#ffe8ad" toneMapped={false} />
-      </mesh>
-      <mesh position={[0.14, 0.1, 0.04]}>
-        <sphereGeometry args={[0.36, 32, 20]} />
-        <meshBasicMaterial color="#3f3569" />
-      </mesh>
-      <mesh position={[-0.1, 0.14, 0.05]} scale={[0.12, 0.055, 0.02]}>
-        <sphereGeometry args={[1, 16, 8]} />
-        <meshBasicMaterial color="#e7c985" transparent opacity={0.42} />
-      </mesh>
-      <mesh position={[-0.16, -0.12, 0.05]} scale={[0.08, 0.04, 0.02]}>
-        <sphereGeometry args={[1, 16, 8]} />
-        <meshBasicMaterial color="#e7c985" transparent opacity={0.34} />
-      </mesh>
-    </group>
-  );
-}
+  float ellipseMask(vec2 point, vec2 center, vec2 radius) {
+    float distanceFromCenter = length((point - center) / radius);
+    return 1.0 - smoothstep(0.78, 1.12, distanceFromCenter);
+  }
 
-function Stars({ count }: { count: number }) {
-  const positions = useMemo(
-    () =>
-      Array.from({ length: count }, (_, index) => {
-        const angle = index * 2.39996;
-        return [
-          Math.cos(angle) * (0.35 + (index % 5) * 0.23) - 0.4,
-          Math.sin(angle) * (0.35 + (index % 4) * 0.2) + 0.25,
-          0.11,
-        ] as [number, number, number];
-      }),
-    [count],
-  );
-  return (
-    <>
-      {positions.map((position, index) => (
-        <mesh key={index} position={position}>
-          <sphereGeometry args={[0.018, 6, 6]} />
-          <meshBasicMaterial color="#fff0b8" />
-        </mesh>
-      ))}
-    </>
-  );
-}
+  void main() {
+    float imageAspect = 1.5;
+    float viewAspect = uResolution.x / max(uResolution.y, 1.0);
+    vec2 sampleUv = vUv;
+    if (viewAspect < imageAspect) {
+      float visibleWidth = viewAspect / imageAspect;
+      sampleUv.x = (1.0 - visibleWidth) * 0.5 + vUv.x * visibleWidth;
+    } else {
+      float visibleHeight = imageAspect / viewAspect;
+      sampleUv.y = (1.0 - visibleHeight) * 0.5 + vUv.y * visibleHeight;
+    }
 
-function FairyLights() {
-  const strands = useMemo(
-    () =>
-      Array.from({ length: 13 }, (_, index) => ({
-        x: -4.2 + index * 0.7,
-        length: 1.4 + (index % 4) * 0.28,
-      })),
-    [],
-  );
-  return (
-    <group>
-      <mesh position={[0, 3.08, 0.18]}>
-        <boxGeometry args={[8.8, 0.025, 0.025]} />
-        <meshBasicMaterial color="#5d507e" />
-      </mesh>
-      {strands.map((strand, index) => (
-        <LightString key={index} {...strand} index={index} />
-      ))}
-    </group>
-  );
-}
+    vec2 topUv = vec2(sampleUv.x, 1.0 - sampleUv.y);
+    float lake = max(
+      ellipseMask(topUv, vec2(0.76, 0.49), vec2(0.23, 0.105)),
+      ellipseMask(topUv, vec2(0.93, 0.48), vec2(0.105, 0.075))
+    );
+    float foliage = max(
+      ellipseMask(topUv, vec2(0.18, 0.69), vec2(0.22, 0.18)),
+      ellipseMask(topUv, vec2(0.94, 0.72), vec2(0.12, 0.2))
+    );
+    float time = uTime;
+    vec2 warpedUv = sampleUv;
+    float ripple = sin(topUv.y * 210.0 + sin(topUv.x * 28.0 + time * 0.24) - time * 1.2);
+    warpedUv.x += lake * ripple * 0.00145;
+    warpedUv.y += lake * sin(topUv.x * 165.0 - time * 0.92) * 0.00065;
+    warpedUv.x += foliage * sin(time * 1.4 + topUv.y * 17.0 + topUv.x * 26.0) * 0.0022;
 
-function LightString({
-  x,
-  length,
-  index,
-}: {
-  x: number;
-  length: number;
-  index: number;
-}) {
-  const bulbCount = Math.max(3, Math.round(length * 2.5));
-  return (
-    <group>
-      <mesh position={[x, 3.08 - length / 2, 0.18]}>
-        <cylinderGeometry args={[0.009, 0.009, length, 6]} />
-        <meshBasicMaterial color="#63567e" />
-      </mesh>
-      {Array.from({ length: bulbCount }, (_, bulbIndex) => {
-        const y = 3.08 - ((bulbIndex + 1) / (bulbCount + 1)) * length;
-        return (
-          <Bulb
-            key={bulbIndex}
-            position={[x, y, 0.22]}
-            index={index * 3 + bulbIndex}
-          />
-        );
-      })}
-    </group>
-  );
-}
+    vec3 color = texture2D(uMap, warpedUv).rgb;
+    float waterGlint = pow(max(0.0, sin(topUv.y * 210.0 + topUv.x * 25.0 - time * 1.3)), 20.0);
+    color += vec3(0.12, 0.16, 0.2) * waterGlint * lake * 0.34;
 
-function Bulb({
-  position,
-  index,
-}: {
-  position: [number, number, number];
-  index: number;
-}) {
-  const ref = useRef<THREE.Mesh>(null);
-  const glow = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 48;
-    canvas.height = 48;
-    const context = canvas.getContext('2d');
-    if (!context) return null;
-    const gradient = context.createRadialGradient(24, 24, 1, 24, 24, 24);
-    gradient.addColorStop(0, 'rgb(255 233 163 / 80%)');
-    gradient.addColorStop(1, 'rgb(255 217 122 / 0%)');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 48, 48);
-    return new THREE.CanvasTexture(canvas);
-  }, []);
-  useFrame(({ clock }) => {
-    if (ref.current)
-      ref.current.scale.setScalar(
-        0.9 + Math.sin(clock.elapsedTime * 1.6 + index) * 0.08,
+    vec2 skyCell = floor(topUv * vec2(46.0, 30.0));
+    float seed = fract(sin(dot(skyCell, vec2(127.1, 311.7))) * 43758.5453);
+    float twinkle = pow(max(0.0, sin(time * (0.35 + seed * 0.55) + seed * 6.283)), 18.0);
+    float sky = 1.0 - smoothstep(0.28, 0.39, topUv.y);
+    float star = step(0.972, seed) * twinkle * sky;
+    color += vec3(0.17, 0.2, 0.29) * star * 0.72;
+
+    float moonHalo = exp(-length((topUv - vec2(0.77, 0.17)) / vec2(0.065, 0.085)) * 3.2);
+    color += vec3(0.1, 0.082, 0.055) * moonHalo * (0.5 + 0.5 * sin(time * 0.22)) * 0.055;
+    gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+type SceneFrame = {
+  width: number;
+  height: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+type WorldRect = { left: number; top: number; width: number; height: number };
+
+function useSceneFrame(stage: React.RefObject<HTMLDivElement | null>) {
+  const [frame, setFrame] = useState<SceneFrame | null>(null);
+  useEffect(() => {
+    const node = stage.current;
+    if (!node) return;
+    const measure = () => {
+      const { width, height } = node.getBoundingClientRect();
+      if (!width || !height) return;
+      const scale = Math.max(width / artwork.width, height / artwork.height);
+      const next = {
+        width,
+        height,
+        scale,
+        offsetX: (width - artwork.width * scale) / 2,
+        offsetY: (height - artwork.height * scale) / 2,
+      };
+      setFrame((current) =>
+        current &&
+        Math.abs(current.width - width) < 0.5 &&
+        Math.abs(current.height - height) < 0.5
+          ? current
+          : next,
       );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    measure();
+    return () => observer.disconnect();
+  }, [stage]);
+  return frame;
+}
+
+function toWorldRect(
+  rect: { x: number; y: number; width: number; height: number },
+  frame: SceneFrame,
+  size: { width: number; height: number },
+  viewport: { width: number; height: number },
+): WorldRect {
+  const left = frame.offsetX + rect.x * frame.scale;
+  const top = frame.offsetY + rect.y * frame.scale;
+  return {
+    left: (left / size.width - 0.5) * viewport.width,
+    top: (0.5 - top / size.height) * viewport.height,
+    width: (rect.width * frame.scale * viewport.width) / size.width,
+    height: (rect.height * frame.scale * viewport.height) / size.height,
+  };
+}
+
+function AnimatedBackdrop({ calmMode }: { calmMode: boolean }) {
+  const sourceTexture = useLoader(
+    THREE.TextureLoader,
+    `${import.meta.env.BASE_URL}assets/glowmory-night-clearing.jpg`,
+  );
+  const texture = useMemo(() => {
+    const sceneTexture = sourceTexture.clone();
+    sceneTexture.colorSpace = THREE.SRGBColorSpace;
+    sceneTexture.needsUpdate = true;
+    return sceneTexture;
+  }, [sourceTexture]);
+  const material = useRef<THREE.ShaderMaterial>(null);
+  const { camera, size, viewport } = useThree();
+  const plane = viewport.getCurrentViewport(
+    camera,
+    new THREE.Vector3(0, 0, -1),
+  );
+  const uniforms = useMemo(
+    () => ({
+      uMap: { value: texture },
+      uResolution: { value: new THREE.Vector2(size.width, size.height) },
+      uTime: { value: 0 },
+    }),
+    [size.height, size.width, texture],
+  );
+  useFrame(({ clock }) => {
+    if (!material.current) return;
+    material.current.uniforms.uTime!.value =
+      clock.elapsedTime * (calmMode ? 0.16 : 1);
+    material.current.uniforms.uResolution!.value.set(size.width, size.height);
   });
   return (
-    <mesh ref={ref} position={position}>
-      <sphereGeometry args={[0.045, 12, 12]} />
-      <meshBasicMaterial color="#ffd97a" toneMapped={false} />
-      <sprite scale={[0.2, 0.2, 0.2]}>
-        <spriteMaterial
-          map={glow}
-          transparent
-          opacity={0.85}
-          depthWrite={false}
-        />
-      </sprite>
+    <mesh position={[0, 0, -1]}>
+      <planeGeometry args={[plane.width, plane.height]} />
+      <shaderMaterial
+        ref={material}
+        uniforms={uniforms}
+        vertexShader={sceneVertexShader}
+        fragmentShader={sceneFragmentShader}
+        depthWrite={false}
+        toneMapped={false}
+      />
     </mesh>
   );
 }
 
-function Shelf() {
-  return (
-    <group position={[0, -1.25, 0]}>
-      <mesh>
-        <boxGeometry args={[8.5, 0.38, 1.5]} />
-        <meshStandardMaterial color="#d9a877" roughness={0.78} />
-      </mesh>
-      <mesh position={[-2.75, 0.38, 0]}>
-        <boxGeometry args={[1.3, 0.16, 0.8]} />
-        <meshStandardMaterial color="#fff6ec" roughness={1} />
-      </mesh>
-      <mesh position={[-2.75, 0.5, 0]} rotation={[0, 0, -0.08]}>
-        <boxGeometry args={[1.05, 0.04, 0.66]} />
-        <meshStandardMaterial color="#f7c6d6" roughness={1} />
-      </mesh>
-      <mesh position={[2.8, 0.45, 0]}>
-        <cylinderGeometry args={[0.42, 0.5, 0.6, 20]} />
-        <meshStandardMaterial color="#bdebd3" roughness={0.9} />
-      </mesh>
-      <mesh position={[2.8, 0.95, 0]}>
-        <sphereGeometry args={[0.58, 12, 8]} />
-        <meshStandardMaterial color="#bdebd3" roughness={0.9} />
-      </mesh>
-    </group>
+function Fireflies({
+  frame,
+  calmMode,
+}: {
+  frame: SceneFrame;
+  calmMode: boolean;
+}) {
+  const { camera, size, viewport } = useThree();
+  const plane = viewport.getCurrentViewport(camera, new THREE.Vector3(0, 0, 2));
+  const jar = useMemo(
+    () => toWorldRect(jarInterior, frame, size, plane),
+    [frame, plane, size],
   );
-}
-
-function Jar() {
-  return (
-    <group position={[0, -0.18, 0.15]} scale={[1.14, 1.14, 1.14]}>
-      <mesh>
-        <latheGeometry
-          args={[
-            [
-              new THREE.Vector2(0.55, -1.15),
-              new THREE.Vector2(0.72, -0.98),
-              new THREE.Vector2(0.78, 0.55),
-              new THREE.Vector2(0.58, 0.95),
-              new THREE.Vector2(0.38, 1.12),
-            ],
-            48,
-          ]}
-        />
-        <MeshTransmissionMaterial
-          color="#b9b5df"
-          thickness={0.24}
-          roughness={0.08}
-          transmission={0.92}
-          ior={1.35}
-          chromaticAberration={0.03}
-          samples={4}
-        />
-      </mesh>
-      <mesh position={[0, -0.35, 0]} scale={[0.96, 0.55, 0.96]}>
-        <sphereGeometry args={[0.78, 32, 18]} />
-        <meshBasicMaterial
-          color="#ffd97a"
-          transparent
-          opacity={0.16}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh position={[0, 1.15, 0]}>
-        <cylinderGeometry args={[0.42, 0.45, 0.18, 32]} />
-        <meshStandardMaterial color="#d9a877" roughness={0.45} />
-      </mesh>
-      <pointLight
-        position={[0, 0, 0.45]}
-        color="#ffd97a"
-        intensity={1.8}
-        distance={3}
-      />
-      <Fireflies />
-    </group>
-  );
-}
-
-function Fireflies() {
   const points = useMemo(
-    () =>
-      Array.from({ length: 32 }, (_, index) => ({
-        position: [
-          ((((index * 17) % 19) - 9) / 18) * 0.68,
-          ((((index * 13) % 23) - 11) / 25) * 0.9,
-          0.16 + ((index * 7) % 9) * 0.08,
-        ] as [number, number, number],
-        color: fireflyColors[index % fireflyColors.length]!,
-        phase: index * 0.7,
-      })),
+    () => [
+      { x: 0.23, y: 0.25, z: 0.02, phase: 0.4, color: feelingColors.proud },
+      { x: 0.74, y: 0.3, z: 0.09, phase: 1.7, color: feelingColors.loved },
+      { x: 0.47, y: 0.46, z: -0.06, phase: 3, color: feelingColors.peaceful },
+      { x: 0.24, y: 0.64, z: 0.07, phase: 4.2, color: feelingColors.silly },
+      { x: 0.72, y: 0.63, z: -0.02, phase: 5.3, color: feelingColors.brave },
+      { x: 0.5, y: 0.78, z: 0.1, phase: 6.6, color: feelingColors.thankful },
+    ],
     [],
   );
+  const scale = jar.width * 0.5;
   return (
     <group>
-      {points.map((fly, index) => (
-        <Firefly key={index} {...fly} />
+      {points.map((fly) => (
+        <Firefly
+          key={fly.phase}
+          {...fly}
+          jar={jar}
+          scale={scale}
+          calmMode={calmMode}
+        />
       ))}
+    </group>
+  );
+}
+
+function Caterpillar({
+  path,
+  jarWidth,
+  calmMode,
+}: {
+  path: WorldRect;
+  jarWidth: number;
+  calmMode: boolean;
+}) {
+  const root = useRef<THREE.Group>(null);
+  const segments = useRef<Array<THREE.Group | null>>([]);
+  const legs = useRef<Array<THREE.Mesh | null>>([]);
+  const unit = jarWidth * 0.12;
+  const bodyLength = unit * 1.55;
+  useFrame(({ clock }) => {
+    if (!root.current) return;
+    const speed = calmMode ? 0.007 : 0.018;
+    const travel = (clock.elapsedTime * speed + 0.12) % 1;
+    const x =
+      path.left +
+      unit * 0.85 +
+      travel * Math.max(0, path.width - bodyLength - unit * 1.7);
+    const time = clock.elapsedTime * (calmMode ? 2 : 5.2);
+    root.current.position.set(
+      x,
+      path.top - path.height * 0.58 + Math.sin(time * 0.55) * unit * 0.018,
+      2.75,
+    );
+    segments.current.forEach((segment, index) => {
+      if (!segment) return;
+      segment.position.y = Math.sin(time - index * 0.72) * unit * 0.025;
+      segment.rotation.z = Math.sin(time * 0.55 - index * 0.65) * 0.045;
+    });
+    legs.current.forEach((leg, index) => {
+      if (leg) leg.rotation.z = Math.sin(time * 1.7 + index * 1.35) * 0.22;
+    });
+  });
+  return (
+    <group ref={root}>
+      {Array.from({ length: 6 }, (_, index) => (
+        <group
+          key={`segment-${index}`}
+          ref={(node) => {
+            segments.current[index] = node;
+          }}
+          position={[0.28 * unit - index * 0.22 * unit, 0, 0]}
+        >
+          <mesh scale={[0.19, 0.2, 0.17]}>
+            <sphereGeometry args={[unit, 16, 12]} />
+            <meshStandardMaterial
+              color={index % 2 ? '#788e4b' : '#91a65e'}
+              roughness={0.68}
+              emissive="#26351b"
+              emissiveIntensity={0.14}
+            />
+          </mesh>
+          <mesh
+            position={[0, unit * 0.15, unit * 0.14]}
+            scale={[0.045, 0.035, 0.025]}
+          >
+            <sphereGeometry args={[unit, 10, 8]} />
+            <meshStandardMaterial color="#bdc47a" roughness={0.82} />
+          </mesh>
+        </group>
+      ))}
+      <mesh
+        position={[0.52 * unit, unit * 0.015, 0]}
+        scale={[0.22, 0.21, 0.18]}
+      >
+        <sphereGeometry args={[unit, 16, 12]} />
+        <meshStandardMaterial
+          color="#9aaa60"
+          roughness={0.64}
+          emissive="#26351b"
+          emissiveIntensity={0.14}
+        />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`eye-${side}`}
+          position={[0.6 * unit, unit * 0.055, side * unit * 0.15]}
+          scale={[0.038, 0.044, 0.024]}
+        >
+          <sphereGeometry args={[unit, 10, 8]} />
+          <meshBasicMaterial color="#302c28" />
+        </mesh>
+      ))}
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`feel-${side}`}
+          position={[0.68 * unit, unit * 0.2, side * unit * 0.07]}
+          rotation={[side * 0.2, 0, 0.28]}
+          scale={[0.018, 0.11, 0.018]}
+        >
+          <sphereGeometry args={[unit, 8, 6]} />
+          <meshStandardMaterial color="#71834b" roughness={0.7} />
+        </mesh>
+      ))}
+      {Array.from({ length: 6 }, (_, index) =>
+        [-1, 1].map((side) => {
+          const legIndex = index * 2 + (side > 0 ? 1 : 0);
+          return (
+            <mesh
+              key={`leg-${legIndex}`}
+              ref={(node) => {
+                legs.current[legIndex] = node;
+              }}
+              position={[
+                0.24 * unit - index * 0.22 * unit,
+                -unit * 0.14,
+                side * unit * 0.09,
+              ]}
+              scale={[0.04, 0.14, 0.035]}
+            >
+              <sphereGeometry args={[unit, 8, 6]} />
+              <meshStandardMaterial color="#52633c" roughness={0.75} />
+            </mesh>
+          );
+        }),
+      )}
     </group>
   );
 }
 
 function Firefly({
-  position,
-  color,
+  x,
+  y,
+  z,
   phase,
+  color,
+  jar,
+  scale,
+  calmMode,
 }: {
-  position: [number, number, number];
-  color: string;
+  x: number;
+  y: number;
+  z: number;
   phase: number;
+  color: string;
+  jar: WorldRect;
+  scale: number;
+  calmMode: boolean;
 }) {
   const ref = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    const time =
+      clock.elapsedTime * (calmMode ? 0.14 : 0.25 + phase * 0.009) + phase;
+    const dx = Math.cos(time) * 0.14 + Math.cos(time * 0.59 + phase) * 0.08;
+    const dy = -Math.sin(time) * 0.11 - Math.sin(time * 0.59 + phase) * 0.06;
+    if (!ref.current) return;
+    ref.current.position.set(
+      jar.left +
+        jar.width *
+          (x + Math.sin(time) * 0.12 + Math.sin(time * 0.59 + phase) * 0.055),
+      jar.top -
+        jar.height *
+          (y + Math.cos(time) * 0.1 + Math.cos(time * 0.59 + phase) * 0.045),
+      2 + z + Math.sin(time * 0.38 + phase) * 0.08,
+    );
+    ref.current.rotation.z = Math.atan2(dy, dx) + Math.PI;
+  });
+  return (
+    <group ref={ref}>
+      <FireflyModel
+        color={color}
+        phase={phase}
+        scale={scale}
+        calmMode={calmMode}
+      />
+    </group>
+  );
+}
+
+function FireflyModel({
+  color,
+  phase,
+  scale,
+  calmMode = false,
+}: {
+  color: string;
+  phase: number;
+  scale: number;
+  calmMode?: boolean;
+}) {
+  const lantern = useRef<THREE.MeshBasicMaterial>(null);
+  const halo = useRef<THREE.SpriteMaterial>(null);
+  const lanternLight = useRef<THREE.PointLight>(null);
   const wingLeft = useRef<THREE.Mesh>(null);
   const wingRight = useRef<THREE.Mesh>(null);
   const glow = useMemo(() => {
@@ -345,172 +412,290 @@ function Firefly({
     const context = canvas.getContext('2d');
     if (!context) return null;
     const gradient = context.createRadialGradient(32, 32, 1, 32, 32, 32);
-    gradient.addColorStop(0, `${color}cc`);
-    gradient.addColorStop(0.18, `${color}66`);
+    gradient.addColorStop(0, 'rgb(255 248 230 / 100%)');
+    gradient.addColorStop(0.12, `${color}ee`);
+    gradient.addColorStop(0.42, `${color}66`);
     gradient.addColorStop(1, `${color}00`);
     context.fillStyle = gradient;
     context.fillRect(0, 0, 64, 64);
     return new THREE.CanvasTexture(canvas);
   }, [color]);
-  useFrame(({ clock, pointer }) => {
-    if (ref.current) {
-      const pulse =
-        0.72 +
-        Math.sin(clock.elapsedTime * (1.8 + phase * 0.03) + phase) * 0.28;
-      const drift = 0.045;
-      ref.current.position.x =
-        position[0] +
-        Math.sin(clock.elapsedTime * 0.45 + phase) * 0.18 +
-        (pointer.x * 0.35 - position[0]) * drift;
-      ref.current.position.y =
-        position[1] +
-        Math.cos(clock.elapsedTime * 0.6 + phase) * 0.16 +
-        (pointer.y * 0.28 - position[1]) * drift;
-      ref.current.position.z =
-        position[2] + Math.sin(clock.elapsedTime * 0.3 + phase) * 0.08;
-      ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.7 + phase) * 0.3;
-      ref.current.scale.setScalar(pulse);
-      if (wingLeft.current && wingRight.current) {
-        const flap = Math.sin(clock.elapsedTime * 7 + phase) * 0.45;
-        wingLeft.current.rotation.y = 0.24 + flap;
-        wingRight.current.rotation.y = -0.24 - flap;
-      }
-    }
+  useFrame(({ clock }) => {
+    const time = clock.elapsedTime;
+    const pulse = Math.pow(
+      0.5 +
+        0.5 *
+          Math.sin(time * Math.PI * 2 * (0.2 + (phase % 4) * 0.035) + phase),
+      2.4,
+    );
+    const flutter = time * (calmMode ? 6 : 15) + phase;
+    if (lantern.current) lantern.current.opacity = 0.1 + pulse * 0.9;
+    if (halo.current) halo.current.opacity = 0.12 + pulse * 0.82;
+    if (lanternLight.current)
+      lanternLight.current.intensity = 0.01 + pulse * 0.32;
+    if (wingLeft.current)
+      wingLeft.current.rotation.z = 0.48 + Math.sin(flutter) * 0.16;
+    if (wingRight.current)
+      wingRight.current.rotation.z = -0.48 + Math.sin(flutter + Math.PI) * 0.16;
   });
   return (
-    <group ref={ref} position={position}>
-      <mesh>
-        <sphereGeometry args={[0.035, 12, 12]} />
-        <meshBasicMaterial color="#fff6d0" toneMapped={false} />
+    <group scale={scale}>
+      <mesh position={[-0.016, 0, 0]} scale={[0.082, 0.027, 0.025]}>
+        <sphereGeometry args={[1, 16, 10]} />
+        <meshBasicMaterial color="#38263e" />
       </mesh>
-      <sprite scale={[0.28, 0.28, 0.28]}>
-        <spriteMaterial
-          map={glow}
-          color={color}
-          transparent
-          opacity={0.9}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </sprite>
+      <mesh position={[-0.077, 0, 0]} scale={[0.025, 0.023, 0.024]}>
+        <sphereGeometry args={[1, 14, 10]} />
+        <meshBasicMaterial color="#49334a" />
+      </mesh>
       <mesh
         ref={wingLeft}
-        position={[-0.045, 0.025, 0]}
-        rotation={[0, 0.24, 0.25]}
-        scale={[0.55, 1.35, 1]}
+        position={[-0.015, 0.027, 0.012]}
+        scale={[0.045, 0.014, 0.005]}
       >
-        <circleGeometry args={[0.055, 16]} />
+        <sphereGeometry args={[1, 14, 8]} />
         <meshBasicMaterial
-          color="#fff1c4"
+          color="#f4dfe6"
           transparent
-          opacity={0.2}
-          side={THREE.DoubleSide}
+          opacity={0.32}
           depthWrite={false}
         />
       </mesh>
       <mesh
         ref={wingRight}
-        position={[0.045, 0.025, 0]}
-        rotation={[0, -0.24, -0.25]}
-        scale={[0.55, 1.35, 1]}
+        position={[-0.015, -0.027, -0.012]}
+        scale={[0.045, 0.014, 0.005]}
       >
-        <circleGeometry args={[0.055, 16]} />
+        <sphereGeometry args={[1, 14, 8]} />
         <meshBasicMaterial
-          color="#fff1c4"
+          color="#e4dafa"
           transparent
-          opacity={0.2}
-          side={THREE.DoubleSide}
+          opacity={0.28}
           depthWrite={false}
         />
       </mesh>
-      <pointLight color={color} intensity={0.08} distance={0.45} />
+      <mesh position={[0.083, 0, 0]} scale={[0.034, 0.027, 0.025]}>
+        <sphereGeometry args={[1, 14, 10]} />
+        <meshBasicMaterial
+          ref={lantern}
+          color={color}
+          transparent
+          toneMapped={false}
+        />
+      </mesh>
+      <sprite position={[0.083, 0, -0.015]} scale={[0.38, 0.38, 1]}>
+        <spriteMaterial
+          ref={halo}
+          map={glow}
+          color={color}
+          transparent
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </sprite>
+      <pointLight
+        ref={lanternLight}
+        position={[0.083, 0, 0.04]}
+        color={color}
+        intensity={0.1}
+        distance={0.7}
+        decay={2}
+      />
     </group>
   );
 }
 
-function SceneTitle() {
-  return null;
-}
-
-function CameraRig() {
-  const { camera } = useThree();
-  const tilt = useRef({ x: 0, y: 0 });
+function BirthRitual({
+  birthKey,
+  jar,
+  flyScale,
+}: {
+  birthKey: number;
+  jar: WorldRect;
+  flyScale: number;
+}) {
+  const start = useRef(0);
+  const note = useRef<THREE.Group>(null);
+  const serum = useRef<THREE.Group>(null);
+  const newborn = useRef<THREE.Group>(null);
+  const noteMaterial = useRef<THREE.MeshBasicMaterial>(null);
+  const serumMaterial = useRef<THREE.MeshBasicMaterial>(null);
   useEffect(() => {
-    const onTilt = (event: DeviceOrientationEvent) => {
-      tilt.current.x = Math.max(-18, Math.min(18, event.beta ?? 0)) / 18;
-      tilt.current.y = Math.max(-18, Math.min(18, event.gamma ?? 0)) / 18;
-    };
-    window.addEventListener('deviceorientation', onTilt);
-    return () => window.removeEventListener('deviceorientation', onTilt);
-  }, []);
-  // R3F's render loop intentionally mutates the live camera for parallax.
-  // eslint-disable-next-line react-hooks/immutability
-  useFrame(({ pointer }) => {
-    // eslint-disable-next-line react-hooks/immutability
-    camera.position.x = THREE.MathUtils.damp(
-      camera.position.x,
-      pointer.x * 0.28 + tilt.current.y * 0.16,
-      3,
-      1 / 60,
+    if (birthKey) start.current = performance.now();
+  }, [birthKey]);
+  useFrame(({ clock, viewport, camera }) => {
+    if (!birthKey || !start.current) return;
+    const view = viewport.getCurrentViewport(
+      camera,
+      new THREE.Vector3(0, 0, 2),
     );
-    camera.position.y = THREE.MathUtils.damp(
-      camera.position.y,
-      0.65 + pointer.y * 0.16 - tilt.current.x * 0.12,
-      3,
-      1 / 60,
-    );
-    camera.lookAt(0, 0.35, 0);
+    const elapsed = (performance.now() - start.current) / 1000;
+    const t = Math.min(elapsed, 8);
+    const targetX = jar.left + jar.width * 0.5;
+    const targetY = jar.top - jar.height * 0.5;
+    if (note.current) {
+      const fold = THREE.MathUtils.smoothstep(t, 0.8, 2.2);
+      const lift = THREE.MathUtils.smoothstep(t, 0.4, 2.3);
+      note.current.position.set(
+        THREE.MathUtils.lerp(-view.width * 0.46, targetX, lift),
+        THREE.MathUtils.lerp(
+          targetY - jar.height * 0.4,
+          targetY + jar.height * 0.38,
+          lift,
+        ),
+        2.5,
+      );
+      note.current.rotation.z = -0.08 + fold * Math.PI * 0.5;
+      note.current.scale.set(1 - fold * 0.5, 1 - fold * 0.25, 1);
+      if (noteMaterial.current)
+        noteMaterial.current.opacity = THREE.MathUtils.clamp(
+          1 - THREE.MathUtils.smoothstep(t, 2.2, 3.6),
+          0,
+          1,
+        );
+    }
+    if (serum.current) {
+      const drip = THREE.MathUtils.smoothstep(t, 2.8, 5.8);
+      serum.current.visible = t > 2.5 && t < 6.4;
+      serum.current.position.set(
+        targetX,
+        THREE.MathUtils.lerp(
+          targetY + jar.height * 0.38,
+          targetY - jar.height * 0.32,
+          drip,
+        ),
+        2.55,
+      );
+      serum.current.scale.setScalar(0.28 + Math.sin(t * 7) * 0.025);
+      if (serumMaterial.current)
+        serumMaterial.current.opacity =
+          t < 3.1 ? (t - 2.5) / 0.6 : t > 5.8 ? 1 - (t - 5.8) / 0.6 : 0.9;
+    }
+    if (newborn.current) {
+      const awaken = THREE.MathUtils.smoothstep(t, 5.7, 7.4);
+      newborn.current.visible = t > 5.7;
+      newborn.current.position.set(targetX, targetY, 2.65);
+      newborn.current.rotation.z = Math.sin(clock.elapsedTime * 3.2) * 0.15;
+      newborn.current.scale.setScalar(flyScale * (0.05 + awaken * 0.95));
+    }
   });
-  return null;
+  return (
+    <group>
+      <group ref={note}>
+        <mesh>
+          <planeGeometry args={[0.42, 0.3]} />
+          <meshBasicMaterial
+            ref={noteMaterial}
+            color="#fff1d8"
+            transparent
+            opacity={0}
+          />
+        </mesh>
+        <mesh position={[0, 0, 0.01]}>
+          <planeGeometry args={[0.3, 0.015]} />
+          <meshBasicMaterial color="#d895a4" transparent opacity={0.45} />
+        </mesh>
+      </group>
+      <group ref={serum} visible={false}>
+        <mesh>
+          <sphereGeometry args={[0.42, 24, 16]} />
+          <meshBasicMaterial
+            ref={serumMaterial}
+            color={feelingColors.proud}
+            transparent
+            opacity={0}
+            toneMapped={false}
+          />
+        </mesh>
+        <pointLight
+          color={feelingColors.proud}
+          intensity={0.7}
+          distance={0.8}
+        />
+      </group>
+      <group ref={newborn} visible={false}>
+        <FireflyModel color={feelingColors.proud} phase={1.4} scale={1} />
+      </group>
+    </group>
+  );
 }
 
-function RoomScene() {
+function RoomScene({
+  frame,
+  birthKey,
+  calmMode,
+}: {
+  frame: SceneFrame;
+  birthKey: number;
+  calmMode: boolean;
+}) {
+  const { camera, size, viewport } = useThree();
+  const plane = viewport.getCurrentViewport(camera, new THREE.Vector3(0, 0, 2));
+  const jar = useMemo(
+    () => toWorldRect(jarInterior, frame, size, plane),
+    [frame, plane, size],
+  );
+  const crawler = useMemo(
+    () => toWorldRect(crawlerPath, frame, size, plane),
+    [frame, plane, size],
+  );
+  const flyScale = jar.width * 0.67;
   return (
     <>
-      <color attach="background" args={['#17132f']} />
-      <CameraRig />
-      <NightBackdrop />
-      <ambientLight intensity={0.42} color="#d7c5ff" />
-      <Window />
-      <FairyLights />
-      <Shelf />
-      <Jar />
-      <SceneTitle />
-      <Sparkles
-        count={24}
-        scale={[7, 5, 1]}
-        size={1.5}
-        speed={0.15}
-        color="#ffd97a"
-        opacity={0.35}
-      />
-      <EffectComposer multisampling={0}>
-        <Bloom intensity={0.65} luminanceThreshold={0.7} mipmapBlur />
-        <DepthOfField
-          focusDistance={0.02}
-          focalLength={0.035}
-          bokehScale={2.2}
-          height={480}
-        />
-        <Vignette eskil={false} offset={0.28} darkness={0.45} />
-        <Noise opacity={0.025} />
-      </EffectComposer>
+      <AnimatedBackdrop calmMode={calmMode} />
+      <ambientLight intensity={1.25} color="#e7dfcd" />
+      <directionalLight position={[-2, 4, 5]} intensity={1.4} color="#fff0d6" />
+      <Fireflies frame={frame} calmMode={calmMode} />
+      <Caterpillar path={crawler} jarWidth={jar.width} calmMode={calmMode} />
+      <BirthRitual birthKey={birthKey} jar={jar} flyScale={flyScale} />
     </>
   );
 }
 
-export function Room() {
+export function Room({
+  birthKey = 0,
+  calmMode = false,
+}: {
+  birthKey?: number;
+  calmMode?: boolean;
+}) {
+  const stage = useRef<HTMLDivElement>(null);
+  const frame = useSceneFrame(stage);
+  const [pageVisible, setPageVisible] = useState(
+    () => document.visibilityState !== 'hidden',
+  );
+  useEffect(() => {
+    const onVisibilityChange = () =>
+      setPageVisible(document.visibilityState !== 'hidden');
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () =>
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
   return (
-    <div className="room-stage" aria-hidden="true">
-      <Canvas
-        dpr={[1, 1.75]}
-        camera={{ position: [0, 0.65, 7], fov: 42 }}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
-      >
-        <Suspense fallback={null}>
-          <RoomScene />
-        </Suspense>
-      </Canvas>
+    <div ref={stage} className="room-stage" aria-hidden="true">
+      <div className={`room-world${calmMode ? ' room-world--calm' : ''}`}>
+        {frame && (
+          <Canvas
+            className="room-fireflies"
+            frameloop={pageVisible ? 'always' : 'never'}
+            dpr={[1, 1.5]}
+            camera={{ position: [0, 0, 7], fov: 42 }}
+            gl={{
+              alpha: true,
+              antialias: true,
+              powerPreference: 'high-performance',
+            }}
+          >
+            <Suspense fallback={null}>
+              <RoomScene
+                frame={frame}
+                birthKey={birthKey}
+                calmMode={calmMode}
+              />
+            </Suspense>
+          </Canvas>
+        )}
+      </div>
     </div>
   );
 }
