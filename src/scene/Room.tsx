@@ -20,11 +20,20 @@ const sceneFragmentShader = `
   uniform sampler2D uMap;
   uniform vec2 uResolution;
   uniform float uTime;
+  uniform float uMotion;
   varying vec2 vUv;
 
   float ellipseMask(vec2 point, vec2 center, vec2 radius) {
     float distanceFromCenter = length((point - center) / radius);
     return 1.0 - smoothstep(0.78, 1.12, distanceFromCenter);
+  }
+
+  float rippleAt(vec2 point, vec2 origin, float time, float phase) {
+    vec2 delta = point - origin;
+    float radius = length(delta * vec2(1.0, 1.7));
+    float phaseNoise = sin(point.x * 24.0 + point.y * 11.0 + time * 0.09 + phase) * 0.22;
+    float wave = sin(radius * 108.0 - time * 0.86 + phaseNoise);
+    return wave * exp(-radius * 15.0);
   }
 
   void main() {
@@ -44,27 +53,35 @@ const sceneFragmentShader = `
       ellipseMask(topUv, vec2(0.76, 0.49), vec2(0.23, 0.105)),
       ellipseMask(topUv, vec2(0.93, 0.48), vec2(0.105, 0.075))
     );
-    float foliage = max(
-      ellipseMask(topUv, vec2(0.18, 0.69), vec2(0.22, 0.18)),
-      ellipseMask(topUv, vec2(0.94, 0.72), vec2(0.12, 0.2))
+    float grass = max(
+      ellipseMask(topUv, vec2(0.13, 0.61), vec2(0.18, 0.12)),
+      ellipseMask(topUv, vec2(0.95, 0.62), vec2(0.085, 0.13))
     );
+    grass *= 1.0 - smoothstep(0.65, 0.69, topUv.y);
     float time = uTime;
     vec2 warpedUv = sampleUv;
-    float ripple = sin(topUv.y * 210.0 + sin(topUv.x * 28.0 + time * 0.24) - time * 1.2);
-    warpedUv.x += lake * ripple * 0.00145;
-    warpedUv.y += lake * sin(topUv.x * 165.0 - time * 0.92) * 0.00065;
-    warpedUv.x += foliage * sin(time * 1.4 + topUv.y * 17.0 + topUv.x * 26.0) * 0.0022;
+    vec2 rippleDeltaA = topUv - vec2(0.78, 0.53);
+    vec2 rippleDeltaB = topUv - vec2(0.93, 0.52);
+    float rippleA = rippleAt(topUv, vec2(0.78, 0.53), time, 0.0) * lake;
+    float rippleB = rippleAt(topUv, vec2(0.93, 0.52), time, 1.7) * lake;
+    warpedUv += normalize(rippleDeltaA + vec2(0.00001)) * rippleA * 0.00085 * uMotion;
+    warpedUv += normalize(rippleDeltaB + vec2(0.00001)) * rippleB * 0.00065 * uMotion;
+
+    float grassWave = sin(time * 0.72 + topUv.x * 17.0 + sin(topUv.y * 13.0) * 0.65);
+    warpedUv.x += grass * grassWave * 0.00135 * uMotion;
+    warpedUv.y += grass * cos(time * 0.56 + topUv.x * 13.0) * 0.00028 * uMotion;
+
+    float cloudRegion = smoothstep(0.09, 0.19, topUv.y) * (1.0 - smoothstep(0.31, 0.38, topUv.y));
+    float cloudDrift = sin(topUv.x * 7.0 + time * 0.045 + sin(topUv.y * 17.0 - time * 0.026) * 0.72);
+    float cloudFlow = sin(topUv.x * 12.0 - time * 0.031 + sin(topUv.y * 9.0 + time * 0.019) * 0.48);
+    float cloudVeil = max(0.0, cloudDrift * 0.58 + cloudFlow * 0.42 - 0.18) * cloudRegion;
+    warpedUv.x += cloudRegion * cloudDrift * 0.0011 * uMotion;
+    warpedUv.y += cloudRegion * cloudFlow * 0.00024 * uMotion;
 
     vec3 color = texture2D(uMap, warpedUv).rgb;
-    float waterGlint = pow(max(0.0, sin(topUv.y * 210.0 + topUv.x * 25.0 - time * 1.3)), 20.0);
-    color += vec3(0.12, 0.16, 0.2) * waterGlint * lake * 0.34;
-
-    vec2 skyCell = floor(topUv * vec2(46.0, 30.0));
-    float seed = fract(sin(dot(skyCell, vec2(127.1, 311.7))) * 43758.5453);
-    float twinkle = pow(max(0.0, sin(time * (0.35 + seed * 0.55) + seed * 6.283)), 18.0);
-    float sky = 1.0 - smoothstep(0.28, 0.39, topUv.y);
-    float star = step(0.972, seed) * twinkle * sky;
-    color += vec3(0.17, 0.2, 0.29) * star * 0.72;
+    float waterSheen = max(rippleA, 0.0) + max(rippleB, 0.0) * 0.7;
+    color += vec3(0.12, 0.16, 0.2) * waterSheen * 0.045 * uMotion;
+    color += vec3(0.055, 0.047, 0.07) * cloudVeil * 0.035 * uMotion;
 
     float moonHalo = exp(-length((topUv - vec2(0.77, 0.17)) / vec2(0.065, 0.085)) * 3.2);
     color += vec3(0.1, 0.082, 0.055) * moonHalo * (0.5 + 0.5 * sin(time * 0.22)) * 0.055;
@@ -130,7 +147,13 @@ function toWorldRect(
   };
 }
 
-function AnimatedBackdrop({ calmMode }: { calmMode: boolean }) {
+function AnimatedBackdrop({
+  calmMode,
+  motionAllowed,
+}: {
+  calmMode: boolean;
+  motionAllowed: boolean;
+}) {
   const sourceTexture = useLoader(
     THREE.TextureLoader,
     `${import.meta.env.BASE_URL}assets/glowmory-night-clearing.jpg`,
@@ -152,6 +175,7 @@ function AnimatedBackdrop({ calmMode }: { calmMode: boolean }) {
       uMap: { value: texture },
       uResolution: { value: new THREE.Vector2(size.width, size.height) },
       uTime: { value: 0 },
+      uMotion: { value: 1 },
     }),
     [size.height, size.width, texture],
   );
@@ -159,6 +183,7 @@ function AnimatedBackdrop({ calmMode }: { calmMode: boolean }) {
     if (!material.current) return;
     material.current.uniforms.uTime!.value =
       clock.elapsedTime * (calmMode ? 0.16 : 1);
+    material.current.uniforms.uMotion!.value = motionAllowed ? 1 : 0;
     material.current.uniforms.uResolution!.value.set(size.width, size.height);
   });
   return (
@@ -624,10 +649,12 @@ function RoomScene({
   frame,
   birthKey,
   calmMode,
+  motionAllowed,
 }: {
   frame: SceneFrame;
   birthKey: number;
   calmMode: boolean;
+  motionAllowed: boolean;
 }) {
   const { camera, size, viewport } = useThree();
   const plane = viewport.getCurrentViewport(camera, new THREE.Vector3(0, 0, 2));
@@ -642,7 +669,7 @@ function RoomScene({
   const flyScale = jar.width * 0.67;
   return (
     <>
-      <AnimatedBackdrop calmMode={calmMode} />
+      <AnimatedBackdrop calmMode={calmMode} motionAllowed={motionAllowed} />
       <ambientLight intensity={1.25} color="#e7dfcd" />
       <directionalLight position={[-2, 4, 5]} intensity={1.4} color="#fff0d6" />
       <Fireflies frame={frame} calmMode={calmMode} />
@@ -661,9 +688,19 @@ export function Room({
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const frame = useSceneFrame(stage);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
   const [pageVisible, setPageVisible] = useState(
     () => document.visibilityState !== 'hidden',
   );
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onPreferenceChange = (event: MediaQueryListEvent) =>
+      setPrefersReducedMotion(event.matches);
+    query.addEventListener('change', onPreferenceChange);
+    return () => query.removeEventListener('change', onPreferenceChange);
+  }, []);
   useEffect(() => {
     const onVisibilityChange = () =>
       setPageVisible(document.visibilityState !== 'hidden');
@@ -673,12 +710,12 @@ export function Room({
   }, []);
   return (
     <div ref={stage} className="room-stage" aria-hidden="true">
-      <div className={`room-world${calmMode ? ' room-world--calm' : ''}`}>
+      <div className="room-world">
         {frame && (
           <Canvas
             className="room-fireflies"
             frameloop={pageVisible ? 'always' : 'never'}
-            dpr={[1, 1.5]}
+            dpr={[1, 1.35]}
             camera={{ position: [0, 0, 7], fov: 42 }}
             gl={{
               alpha: true,
@@ -690,7 +727,8 @@ export function Room({
               <RoomScene
                 frame={frame}
                 birthKey={birthKey}
-                calmMode={calmMode}
+                calmMode={calmMode || prefersReducedMotion}
+                motionAllowed={!prefersReducedMotion}
               />
             </Suspense>
           </Canvas>

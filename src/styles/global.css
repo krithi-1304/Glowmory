@@ -55,11 +55,6 @@ textarea {
 .room-world {
   position: absolute;
   inset: 0;
-  transform-origin: 50% 60%;
-  animation: night-scene-drift 28s ease-in-out infinite alternate;
-}
-.room-world--calm {
-  animation: none;
 }
 .room-stage canvas {
   position: absolute !important;
@@ -68,14 +63,6 @@ textarea {
   width: 100% !important;
   height: 100% !important;
   pointer-events: none;
-}
-@keyframes night-scene-drift {
-  from {
-    transform: scale(1.015) translate3d(-0.15%, 0.12%, 0);
-  }
-  to {
-    transform: scale(1.035) translate3d(0.15%, -0.18%, 0);
-  }
 }
 .scene-copy {
   position: absolute;
@@ -494,9 +481,6 @@ button:disabled {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .room-world {
-    animation: none;
-  }
   *,
   *::before,
   *::after {
