@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { feelingColors } from './palette';
@@ -234,7 +234,7 @@ function Fireflies({
     [frame, plane, size],
   );
   const count = Math.max(memories.length, 1);
-  const scale = jar.width * 0.5 * Math.min(1, Math.sqrt(8 / count));
+  const scale = jar.width * 0.57 * Math.min(1, Math.sqrt(8 / count));
   return (
     <group>
       {memories.map((memory, index) => {
@@ -399,9 +399,10 @@ function getGlowTexture(color: string) {
   const context = canvas.getContext('2d');
   if (context) {
     const gradient = context.createRadialGradient(32, 32, 1, 32, 32, 32);
-    gradient.addColorStop(0, 'rgb(255 248 230 / 100%)');
-    gradient.addColorStop(0.12, `${color}ee`);
-    gradient.addColorStop(0.42, `${color}66`);
+    gradient.addColorStop(0, 'rgb(255 249 231 / 100%)');
+    gradient.addColorStop(0.045, `${color}f2`);
+    gradient.addColorStop(0.18, `${color}bd`);
+    gradient.addColorStop(0.46, `${color}5c`);
     gradient.addColorStop(1, `${color}00`);
     context.fillStyle = gradient;
     context.fillRect(0, 0, 64, 64);
@@ -440,11 +441,13 @@ function Firefly({
   const halo = useRef<THREE.SpriteMaterial>(null);
   const wingLeft = useRef<THREE.Mesh>(null);
   const wingRight = useRef<THREE.Mesh>(null);
+  const wingLeftMaterial = useRef<THREE.MeshBasicMaterial>(null);
+  const wingRightMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const birthStarted = useRef<number | null>(null);
   const birthComplete = useRef(false);
-  const color = feelingColors[memory.feeling];
   const wingSpan = 0.8 + THREE.MathUtils.clamp(memory.look?.wing ?? 0.5, 0, 1) * 0.4;
   const seed = memory.look?.seed ?? 0.5;
+  const color = feelingColors[memory.feeling];
   const isBirthFly = birthKey > 0 && birthMemoryId === memory.id;
   const glow = useMemo(() => getGlowTexture(color), [color]);
 
@@ -457,19 +460,27 @@ function Firefly({
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    const time =
-      clock.elapsedTime * (calmMode ? 0.14 : 0.19 + seed * 0.07) + phase;
-    const dx = Math.cos(time) * 0.12 + Math.cos(time * 0.61 + phase) * 0.055;
-    const dy = -Math.sin(time) * 0.1 - Math.sin(time * 0.57 + phase) * 0.05;
-    const driftX = Math.sin(time * 0.41 + phase * 1.2) * 0.025;
-    const driftY = Math.cos(time * 0.37 + phase * 0.8) * 0.022;
+    const elapsed = clock.elapsedTime;
+    const speed = calmMode ? 0.095 : 0.16 + seed * 0.085;
+    const flight = elapsed * speed + phase;
+    const wander = elapsed * (speed * 0.53 + 0.013) + phase * 1.71;
+    const meander = elapsed * (speed * 0.29 + 0.009) + phase * 2.37;
+    const drift = elapsed * (speed * 0.17 + 0.007) + phase * 0.83;
+    const dx =
+      Math.cos(flight) * speed * 0.085 +
+      Math.cos(wander) * (speed * 0.53 + 0.013) * 0.043 +
+      Math.cos(meander) * (speed * 0.29 + 0.009) * 0.022;
+    const dy =
+      -Math.sin(flight * 0.79 + phase) * speed * 0.79 * 0.068 +
+      Math.cos(wander * 1.13) * (speed * 0.53 + 0.013) * 1.13 * 0.039 -
+      Math.sin(drift) * (speed * 0.17 + 0.007) * 0.022;
     const flightX = THREE.MathUtils.clamp(
-      x + Math.sin(time) * 0.1 + driftX,
+      x + Math.sin(flight) * 0.085 + Math.sin(wander) * 0.043 + Math.sin(meander) * 0.022,
       0.12,
       0.88,
     );
     const flightY = THREE.MathUtils.clamp(
-      y + Math.cos(time * 0.83) * 0.08 + driftY,
+      y + Math.cos(flight * 0.79 + phase) * 0.068 + Math.sin(wander * 1.13) * 0.039 + Math.cos(drift) * 0.022,
       0.12,
       0.88,
     );
@@ -489,7 +500,7 @@ function Firefly({
     ref.current.position.set(
       jar.left + jar.width * positionX,
       jar.top - jar.height * positionY,
-      2 + Math.sin(time * 0.31 + phase) * 0.07,
+      2 + Math.sin(flight * 0.31 + phase) * 0.045 + Math.cos(wander * 0.6) * 0.025,
     );
     ref.current.rotation.z = Math.atan2(dy, dx) + Math.PI;
 
@@ -504,15 +515,23 @@ function Firefly({
     ref.current.visible = reveal > 0.01;
     ref.current.scale.setScalar(Math.max(reveal, 0.001));
 
-    const pulse = Math.pow(
+    const pulseRate = calmMode
+      ? 0.12 + seed * 0.08
+      : 0.2 + ((seed * 17.37) % 1) * 0.3;
+    const pulseWave =
       0.5 +
-        0.5 *
-          Math.sin(time * Math.PI * 2 * (0.2 + (phase % 4) * 0.035) + phase),
-      2.4,
-    );
-    const flutter = clock.elapsedTime * (calmMode ? 6 : 15) + phase;
-    if (lantern.current) lantern.current.opacity = (0.1 + pulse * 0.9) * reveal;
-    if (halo.current) halo.current.opacity = (0.12 + pulse * 0.82) * reveal;
+      0.5 *
+        Math.sin(
+          elapsed * Math.PI * 2 * pulseRate + phase + Math.sin(elapsed * 0.13 + phase) * 0.18,
+        );
+    const pulse = Math.pow(pulseWave, 2.7);
+    const flutter = elapsed * (calmMode ? 4 : 9 + seed * 4) + phase;
+    if (lantern.current) lantern.current.opacity = (0.025 + pulse * 0.92) * reveal;
+    if (halo.current) halo.current.opacity = (0.02 + pulse * 0.72) * reveal;
+    if (wingLeftMaterial.current)
+      wingLeftMaterial.current.opacity = 0.14 + (0.5 + Math.sin(flutter) * 0.5) * 0.2;
+    if (wingRightMaterial.current)
+      wingRightMaterial.current.opacity = 0.14 + (0.5 + Math.sin(flutter + Math.PI) * 0.5) * 0.2;
     if (wingLeft.current)
       wingLeft.current.rotation.z = 0.48 + Math.sin(flutter) * 0.16;
     if (wingRight.current)
@@ -541,27 +560,31 @@ function Firefly({
         <mesh
           ref={wingLeft}
           position={[-0.015, 0.027, 0.012]}
-          scale={[0.045 * wingSpan, 0.014, 0.005]}
+          scale={[0.053 * wingSpan, 0.017, 0.005]}
         >
           <sphereGeometry args={[1, 14, 8]} />
           <meshBasicMaterial
-            color="#f4dfe6"
+            ref={wingLeftMaterial}
+            color="#fff0e8"
             transparent
-            opacity={0.32}
+            opacity={0.38}
             depthWrite={false}
+            toneMapped={false}
           />
         </mesh>
         <mesh
           ref={wingRight}
           position={[-0.015, -0.027, -0.012]}
-          scale={[0.045 * wingSpan, 0.014, 0.005]}
+          scale={[0.053 * wingSpan, 0.017, 0.005]}
         >
           <sphereGeometry args={[1, 14, 8]} />
           <meshBasicMaterial
-            color="#e4dafa"
+            ref={wingRightMaterial}
+            color="#eee5ff"
             transparent
-            opacity={0.28}
+            opacity={0.34}
             depthWrite={false}
+            toneMapped={false}
           />
         </mesh>
         <mesh position={[0.083, 0, 0]} scale={[0.034, 0.027, 0.025]}>
@@ -572,6 +595,10 @@ function Firefly({
             transparent
             toneMapped={false}
           />
+        </mesh>
+        <mesh position={[0.094, 0.001, 0.012]} scale={[0.012, 0.013, 0.013]}>
+          <sphereGeometry args={[1, 12, 8]} />
+          <meshBasicMaterial color="#fff8e7" toneMapped={false} />
         </mesh>
         <sprite position={[0.083, 0, -0.015]} scale={[0.38, 0.38, 1]}>
           <spriteMaterial
@@ -597,50 +624,55 @@ function BirthRitual({
 }) {
   const start = useRef(0);
   const note = useRef<THREE.Group>(null);
+  const foldedPanel = useRef<THREE.Group>(null);
   const serum = useRef<THREE.Group>(null);
   const noteMaterial = useRef<THREE.MeshBasicMaterial>(null);
+  const foldedNoteMaterial = useRef<THREE.MeshBasicMaterial>(null);
+  const noteDetailMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const serumMaterial = useRef<THREE.MeshBasicMaterial>(null);
   useEffect(() => {
     if (birthKey) start.current = performance.now();
   }, [birthKey]);
-  useFrame(({ viewport, camera }) => {
+  useFrame(() => {
     if (!birthKey || !start.current) return;
-    const view = viewport.getCurrentViewport(
-      camera,
-      new THREE.Vector3(0, 0, 2),
-    );
     const elapsed = (performance.now() - start.current) / 1000;
     const t = Math.min(elapsed, 8);
     const targetX = jar.left + jar.width * 0.5;
     const targetY = jar.top - jar.height * 0.5;
+    const mouthY = targetY + jar.height * 0.75;
     if (note.current) {
-      const fold = THREE.MathUtils.smoothstep(t, 0.8, 2.2);
-      const lift = THREE.MathUtils.smoothstep(t, 0.4, 2.3);
+      const fold = THREE.MathUtils.smoothstep(t, 0.7, 2.3);
+      const travel = THREE.MathUtils.smoothstep(t, 0.15, 2.1);
       note.current.position.set(
-        THREE.MathUtils.lerp(-view.width * 0.46, targetX, lift),
+        targetX + Math.sin(t * 1.8) * jar.width * 0.025,
         THREE.MathUtils.lerp(
-          targetY - jar.height * 0.4,
-          targetY + jar.height * 0.38,
-          lift,
-        ),
+          mouthY - jar.height * 0.08,
+          targetY + jar.height * 0.14,
+          travel,
+        ) + Math.sin(t * 2.2) * jar.height * 0.018,
         2.5,
       );
-      note.current.rotation.z = -0.08 + fold * Math.PI * 0.5;
-      note.current.scale.set(1 - fold * 0.5, 1 - fold * 0.25, 1);
-      if (noteMaterial.current)
-        noteMaterial.current.opacity = THREE.MathUtils.clamp(
-          1 - THREE.MathUtils.smoothstep(t, 2.2, 3.6),
-          0,
-          1,
-        );
+      note.current.rotation.z = -0.08 + Math.sin(t * 1.7) * 0.045;
+      if (foldedPanel.current)
+        foldedPanel.current.rotation.y = -fold * Math.PI * 0.92;
+      const noteOpacity = THREE.MathUtils.clamp(
+        1 - THREE.MathUtils.smoothstep(t, 2.35, 3.45),
+        0,
+        1,
+      );
+      if (noteMaterial.current) noteMaterial.current.opacity = noteOpacity;
+      if (foldedNoteMaterial.current)
+        foldedNoteMaterial.current.opacity = noteOpacity;
+      if (noteDetailMaterial.current)
+        noteDetailMaterial.current.opacity = noteOpacity * 0.45;
     }
     if (serum.current) {
-      const drip = THREE.MathUtils.smoothstep(t, 2.8, 5.8);
-      serum.current.visible = t > 2.5 && t < 6.4;
+      const drip = THREE.MathUtils.smoothstep(t, 3.05, 5.9);
+      serum.current.visible = t > 2.7 && t < 6.4;
       serum.current.position.set(
-        targetX,
+        targetX + Math.sin(t * 1.45) * jar.width * 0.018,
         THREE.MathUtils.lerp(
-          targetY + jar.height * 0.38,
+          mouthY - jar.height * 0.08,
           targetY - jar.height * 0.32,
           drip,
         ),
@@ -650,24 +682,42 @@ function BirthRitual({
       serum.current.scale.set(dropScale, dropScale, dropScale);
       if (serumMaterial.current)
         serumMaterial.current.opacity =
-          t < 3.1 ? (t - 2.5) / 0.6 : t > 5.8 ? 1 - (t - 5.8) / 0.6 : 0.9;
+          t < 3.3 ? (t - 2.7) / 0.6 : t > 5.8 ? 1 - (t - 5.8) / 0.6 : 0.9;
     }
   });
   return (
     <group>
       <group ref={note}>
-        <mesh>
-          <planeGeometry args={[0.42, 0.3]} />
+        <mesh position={[-0.105, 0, 0]}>
+          <planeGeometry args={[0.21, 0.3]} />
           <meshBasicMaterial
             ref={noteMaterial}
             color="#fff1d8"
             transparent
             opacity={0}
+            side={THREE.DoubleSide}
           />
         </mesh>
-        <mesh position={[0, 0, 0.01]}>
-          <planeGeometry args={[0.3, 0.015]} />
-          <meshBasicMaterial color="#d895a4" transparent opacity={0.45} />
+        <group ref={foldedPanel}>
+          <mesh position={[0.105, 0, 0]}>
+            <planeGeometry args={[0.21, 0.3]} />
+            <meshBasicMaterial
+              ref={foldedNoteMaterial}
+              color="#fff1d8"
+              transparent
+              opacity={0}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
+        <mesh position={[-0.105, 0, 0.01]}>
+          <planeGeometry args={[0.14, 0.012]} />
+          <meshBasicMaterial
+            ref={noteDetailMaterial}
+            color="#d895a4"
+            transparent
+            opacity={0}
+          />
         </mesh>
       </group>
       <group ref={serum} visible={false}>
@@ -743,12 +793,14 @@ export function Room({
   birthMemoryId = null,
   calmMode = false,
   onSelectMemory,
+  children,
 }: {
   memories: Memory[];
   birthKey?: number;
   birthMemoryId?: string | null;
   calmMode?: boolean;
   onSelectMemory: (id: string) => void;
+  children?: ReactNode;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const frame = useSceneFrame(stage);
@@ -773,8 +825,8 @@ export function Room({
       document.removeEventListener('visibilitychange', onVisibilityChange);
   }, []);
   return (
-    <div ref={stage} className="room-stage" aria-hidden="true">
-      <div className="room-world">
+    <div ref={stage} className="room-stage">
+      <div className="room-world" aria-hidden="true">
         {frame && (
           <Canvas
             className="room-fireflies"
@@ -801,6 +853,17 @@ export function Room({
           </Canvas>
         )}
       </div>
+      {frame && children && (
+        <div
+          className="jar-overlay-anchor"
+          style={{
+            left: frame.offsetX + 770 * frame.scale,
+            top: frame.offsetY + 340 * frame.scale,
+          }}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }

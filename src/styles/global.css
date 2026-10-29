@@ -55,6 +55,7 @@ textarea {
 .room-world {
   position: absolute;
   inset: 0;
+  pointer-events: none;
 }
 .room-stage canvas {
   position: absolute !important;
@@ -75,6 +76,8 @@ textarea {
   text-shadow: 0 2px 18px rgb(74 63 107 / 22%);
 }
 .scene-copy h1 {
+  position: relative;
+  display: inline-block;
   color: #fff0d5;
   font-size: clamp(2.8rem, 10vw, 4.8rem);
   -webkit-text-stroke: 0.6px rgb(255 247 226 / 70%);
@@ -87,6 +90,25 @@ textarea {
     0 9px 16px rgb(16 12 39 / 54%),
     0 0 24px rgb(255 217 122 / 56%),
     0 0 48px rgb(255 217 122 / 26%);
+}
+.title-firefly-glint {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  pointer-events: none;
+  background: linear-gradient(
+    108deg,
+    transparent 0 42%,
+    rgb(255 255 225 / 78%) 49%,
+    rgb(255 217 122 / 48%) 51%,
+    transparent 59% 100%
+  );
+  background-size: 240% 100%;
+  background-position: 130% 0;
+  background-clip: text;
+  -webkit-background-clip: text;
+  filter: drop-shadow(0 0 7px rgb(255 217 122 / 62%));
+  animation: title-firefly-pass 18s ease-in-out infinite;
 }
 .brand-mark {
   display: block;
@@ -132,13 +154,9 @@ h1 {
   position: absolute;
   z-index: 2;
   bottom: 1.65rem;
-  left: 1.35rem;
   right: 1.35rem;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
-  max-width: 54rem;
-  margin-inline: auto;
+  display: flex;
+  justify-content: flex-end;
   padding: 0;
   pointer-events: none;
 }
@@ -197,6 +215,355 @@ button {
   transform: translateY(-2px);
   background: #fffaf4;
   box-shadow: 0 10px 26px rgb(10 7 29 / 38%);
+}
+.jar-overlay-anchor {
+  position: absolute;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.jar-interactions {
+  position: absolute;
+  inset: 0;
+}
+.jar-action {
+  position: absolute;
+  top: -1.2rem;
+  display: grid;
+  justify-items: center;
+  width: 3rem;
+  min-height: 3.3rem;
+  padding: 0.1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
+}
+.jar-action--paper {
+  left: -3.6rem;
+}
+.jar-action--firefly {
+  right: -3.6rem;
+}
+.jar-action__art {
+  width: 2.25rem;
+  height: 2.5rem;
+  overflow: visible;
+  fill: transparent;
+  stroke: #fff1d6;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px rgb(255 217 122 / 66%));
+  transition:
+    transform 300ms ease,
+    filter 300ms ease;
+}
+.jar-action--paper .jar-action__art path:nth-of-type(2) {
+  fill: #fff1d6;
+}
+.jar-action--firefly .jar-action__art path {
+  fill: #f7b6cc;
+  stroke: #fff1d6;
+  stroke-width: 0.65;
+}
+.jar-action--firefly .jar-action__art ellipse {
+  fill: #49334a;
+  stroke: #fff1d6;
+  stroke-width: 0.6;
+}
+.jar-action--firefly .jar-action__art circle {
+  fill: #ffd97a;
+  stroke: #fff1d6;
+  stroke-width: 0.65;
+  filter: drop-shadow(0 0 4px #ffd97a);
+}
+.jar-action__label {
+  position: absolute;
+  top: calc(100% - 0.25rem);
+  width: max-content;
+  color: #fff6ec;
+  font-family: var(--font-note);
+  font-size: 1.05rem;
+  line-height: 1;
+  opacity: 0;
+  text-shadow: 0 1px 5px #241931;
+  transform: translateY(0.2rem);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  pointer-events: none;
+}
+.jar-action--paper .jar-action__label {
+  left: -2rem;
+  width: 5.8rem;
+  text-align: right;
+}
+.jar-action--firefly .jar-action__label {
+  left: calc(100% - 0.3rem);
+  width: 5.7rem;
+  text-align: left;
+}
+.jar-action:hover .jar-action__art,
+.jar-action:focus-visible .jar-action__art {
+  filter: drop-shadow(0 0 9px rgb(255 217 122 / 96%));
+  transform: translateY(-2px) scale(1.08);
+}
+.jar-action:hover .jar-action__label,
+.jar-action:focus-visible .jar-action__label {
+  opacity: 1;
+  transform: translateY(0);
+}
+.jar-action:focus-visible,
+.jar-feeling-choice:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+.jar-feeling-choices {
+  position: absolute;
+  top: 2.5rem;
+  left: 50%;
+  display: grid;
+  width: min(18rem, calc(100vw - 1.5rem));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 0.15rem 0.3rem;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.jar-feeling-choices > p {
+  grid-column: 1 / -1;
+  margin: 0 0 0.15rem;
+  color: #fff6ec;
+  font-family: var(--font-note);
+  font-size: 1.25rem;
+  text-align: center;
+  text-shadow: 0 1px 6px #251b33;
+}
+.jar-feeling-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  min-width: 0;
+  padding: 0.25rem 0.1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--feeling-color, #fff6ec);
+  font-family: var(--font-note);
+  font-size: 1.12rem;
+  line-height: 1;
+  text-shadow: 0 1px 5px #241931;
+}
+.jar-feeling-choice:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+.jar-feeling-choice > span {
+  width: 0.34rem;
+  height: 0.34rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0.55rem currentColor;
+}
+.jar-feeling-choice--surprise {
+  grid-column: 1 / 3;
+  color: #fff1d6;
+  text-decoration: underline;
+  text-decoration-color: rgb(255 217 122 / 70%);
+  text-underline-offset: 0.18rem;
+}
+.jar-feeling-choice--close {
+  color: #f7d9e2;
+  font-size: 1rem;
+}
+.jar-warm-glow {
+  position: absolute;
+  z-index: -1;
+  top: 3rem;
+  left: 50%;
+  width: min(14rem, 80vw);
+  height: 13rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(255 217 122 / 16%), transparent 70%);
+  opacity: 0.8;
+  transform: translateX(-50%);
+  animation: jar-awaken 2.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.jar-chit {
+  position: absolute;
+  z-index: 2;
+  top: 2.5rem;
+  left: 50%;
+  width: min(15rem, calc(100vw - 2rem));
+  max-height: min(42svh, 21rem);
+  overflow: auto;
+  padding: 0.95rem 0.95rem 0.8rem;
+  border: 1px solid rgb(217 168 119 / 74%);
+  border-radius: 24px 7px 20px 9px / 15px 18px 11px 20px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 56%), transparent 58%),
+    #fff3df;
+  color: #4a3f6b;
+  box-shadow:
+    0 8px 24px rgb(22 15 36 / 45%),
+    inset 0 0 16px rgb(216 170 111 / 15%);
+  text-align: center;
+  transform: translateX(-50%) rotate(-0.7deg);
+  animation: chit-emerge 1.45s cubic-bezier(0.18, 0.84, 0.24, 1) both;
+  pointer-events: auto;
+}
+.jar-chit > :not(.jar-chit__close) {
+  animation: chit-words-open 850ms ease-out 520ms both;
+}
+.jar-chit__close {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.3rem;
+  padding: 0.12rem 0.4rem;
+  background: transparent;
+  box-shadow: none;
+  color: #725674;
+  font-size: 1.35rem;
+}
+.jar-chit__source {
+  margin: 0 1.5rem 0.2rem;
+  color: #866681;
+  font-size: 0.77rem;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+.jar-chit h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-note);
+  font-size: 1.65rem;
+  font-weight: 400;
+  line-height: 1.1;
+}
+.jar-chit__message {
+  margin: 0.3rem auto 0.55rem;
+  max-width: 34ch;
+  font-family: var(--font-note);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+.jar-chit__sense {
+  margin: 0.35rem 0;
+  color: #775e77;
+  font-style: italic;
+}
+.jar-chit__release {
+  min-height: 2.15rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgb(189 133 77 / 75%);
+  background: #f1d59f;
+  color: #4a3f6b;
+  font-weight: 800;
+}
+.jar-chit__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.1rem 0.5rem;
+  margin-top: 0.4rem;
+}
+.jar-chit__links button {
+  padding: 0.25rem 0.2rem;
+  background: transparent;
+  box-shadow: none;
+  color: #725674;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  text-underline-offset: 0.16rem;
+}
+@keyframes title-firefly-pass {
+  0%, 28%, 100% { background-position: 130% 0; }
+  42%, 58% { background-position: -130% 0; }
+}
+.jar-chit--releasing {
+  animation: release-chit 2.2s cubic-bezier(0.45, 0, 0.75, 0.4) forwards;
+  pointer-events: none;
+}
+.jar-chit--calm.jar-chit--releasing {
+  animation-duration: 0.01ms;
+}
+.panel--parchment {
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1rem 1.15rem 0.9rem;
+  border: 1px solid rgb(217 168 119 / 78%);
+  border-radius: 27px 8px 22px 10px / 18px 22px 14px 24px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 68%), transparent 62%),
+    #fff3df;
+  box-shadow:
+    0 16px 42px rgb(18 14 35 / 38%),
+    inset 0 0 18px rgb(216 170 111 / 13%);
+}
+.panel-backdrop--writing {
+  display: grid;
+  place-items: center;
+  background: rgb(15 13 32 / 16%);
+  backdrop-filter: none;
+}
+.panel--parchment h2 {
+  margin-bottom: 0.35rem;
+  font-size: clamp(1.75rem, 7vw, 2.25rem);
+}
+.feeling-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2rem 0.45rem;
+}
+.feeling-grid button {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #6b5573;
+  font-family: var(--font-note);
+  font-size: 1.15rem;
+}
+.feeling-grid button.selected,
+.feeling-grid button:hover {
+  border-color: rgb(217 168 119 / 58%);
+  background: rgb(255 255 255 / 42%);
+  box-shadow: 0 0 12px rgb(255 217 122 / 28%);
+}
+.feeling-grid--large {
+  grid-template-columns: none;
+}
+@keyframes jar-awaken {
+  from { opacity: 0.42; transform: translateX(-50%) scale(0.96); }
+  to { opacity: 0.92; transform: translateX(-50%) scale(1.04); }
+}
+@keyframes chit-emerge {
+  0% { opacity: 0; transform: translate(-50%, 3rem) rotate(-8deg) scale(0.38, 0.24); border-radius: 8px 4px 10px 5px; }
+  32% { opacity: 1; transform: translate(calc(-50% - 0.35rem), 0.45rem) rotate(3deg) scale(0.46, 0.3); border-radius: 8px 4px 10px 5px; }
+  62% { transform: translate(calc(-50% + 0.12rem), -0.18rem) rotate(-2deg) scale(0.82, 0.88); border-radius: 24px 7px 20px 9px; }
+  100% { opacity: 1; transform: translate(-50%, 0) rotate(-0.7deg) scale(1); }
+}
+@keyframes chit-words-open {
+  from { opacity: 0; filter: blur(3px); }
+  to { opacity: 1; filter: blur(0); }
+}
+@keyframes release-chit {
+  0% { opacity: 1; transform: translate(-50%, 0) rotate(-0.7deg) scale(1); border-radius: 19px 6px 15px 8px; }
+  30% { opacity: 1; transform: translate(calc(-50% - 0.4rem), -8vh) rotate(14deg) scale(0.82); }
+  62% { opacity: 0.82; transform: translate(calc(-50% + 0.4rem), -24vh) rotate(74deg) scale(0.45); border-radius: 50%; background: #ffd97a; box-shadow: 0 0 36px #ffd97a; }
+  100% { opacity: 0; transform: translate(calc(-50% + 1.5rem), -51vh) rotate(154deg) scale(0.12); border-radius: 50%; background: #ffd97a; box-shadow: 0 0 40px #ffd97a; }
 }
 button:disabled {
   opacity: 0.5;
@@ -274,8 +641,64 @@ button:disabled {
   padding: 0.75rem;
 }
 .panel textarea {
-  min-height: 8rem;
+  min-height: 5.25rem;
   resize: vertical;
+}
+.panel-backdrop.panel-backdrop--writing {
+  background: rgb(15 13 32 / 12%);
+  backdrop-filter: none;
+}
+.panel.panel--parchment {
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1rem 1.15rem 0.9rem;
+  border: 1px solid rgb(217 168 119 / 78%);
+  border-radius: 27px 8px 22px 10px / 18px 22px 14px 24px;
+  background-color: #fff3df;
+  background-image: radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 68%), transparent 62%);
+  box-shadow:
+    0 16px 42px rgb(18 14 35 / 38%),
+    inset 0 0 18px rgb(216 170 111 / 13%);
+}
+.panel--parchment textarea {
+  min-height: 4.75rem;
+  margin: 0.2rem 0 0.3rem;
+  border: 0;
+  border-bottom: 1px solid rgb(189 133 77 / 62%);
+  border-radius: 8px 8px 2px 2px;
+  background: rgb(255 255 255 / 35%);
+}
+.panel--parchment input:not([type='checkbox']):not([type='range']) {
+  margin: 0.25rem 0 0.35rem;
+  border-bottom: 1px solid rgb(189 133 77 / 52%);
+  border-radius: 3px;
+  background: rgb(255 255 255 / 32%);
+}
+.panel--parchment .feeling-grid {
+  gap: 0.1rem 0.2rem;
+  margin: 0.35rem 0;
+}
+.panel--parchment .feeling-grid button {
+  padding: 0.32rem 0.3rem;
+  font-size: 0.82rem;
+}
+.panel--parchment .primary-button {
+  min-height: 2.4rem;
+}
+.sense-details {
+  margin: 0.15rem 0 0.35rem;
+  text-align: left;
+}
+.sense-details summary {
+  color: #725674;
+  cursor: pointer;
+  font-size: 0.88rem;
+  text-align: center;
+  text-underline-offset: 0.16rem;
+}
+.sense-details label {
+  display: block;
+  padding-top: 0.3rem;
+  font-size: 0.88rem;
 }
 .counter {
   display: block;
@@ -373,37 +796,6 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ritual-card {
-  position: absolute;
-  z-index: 4;
-  top: 1.5rem;
-  right: 1.5rem;
-  transform: rotate(1.2deg);
-  display: grid;
-  place-items: center;
-  gap: 0.35rem;
-  min-width: 8rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 10px 14px 9px 12px;
-  background: rgb(255 246 236 / 82%);
-  color: var(--ink);
-  box-shadow: 0 10px 35px rgb(74 63 107 / 24%);
-  text-align: center;
-}
-.ritual-card p {
-  margin: 0;
-  font-size: 0.78rem;
-  opacity: 0.7;
-}
-.ritual-card strong {
-  font-family: var(--font-note);
-  font-size: 1.45rem;
-  font-weight: 400;
-}
-.ritual-card button {
-  padding: 0.35rem 0.7rem;
-  font-size: 0.8rem;
-}
 .memory-row {
   border-bottom: 1px solid #ead4cc;
   padding: 0.7rem 0;
@@ -474,6 +866,33 @@ button:disabled {
     width: 0.85rem;
     height: 0.85rem;
   }
+  .jar-action__label {
+    opacity: 1;
+    transform: none;
+    font-size: 0.92rem;
+  }
+  .jar-feeling-choices {
+    top: 2.2rem;
+    width: min(17.5rem, calc(100vw - 1rem));
+  }
+  .jar-feeling-choice {
+    font-size: 1.05rem;
+  }
+  .jar-chit {
+    top: 2.2rem;
+    width: min(14.5rem, calc(100vw - 2rem));
+    max-height: min(39svh, 19rem);
+    padding: 0.8rem 0.75rem 0.65rem;
+  }
+  .jar-chit__message {
+    font-size: 1.23rem;
+  }
+  .jar-chit__links {
+    gap: 0.05rem 0.25rem;
+  }
+  .jar-chit__links button {
+    font-size: 0.72rem;
+  }
   .panel {
     border-radius: 18px;
   }
@@ -484,5 +903,18 @@ button:disabled {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+  .jar-warm-glow,
+  .jar-chit,
+  .jar-chit--releasing {
+    animation-duration: 0.01ms !important;
+  }
+  .jar-chit > :not(.jar-chit__close) {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+  .title-firefly-glint {
+    animation: none;
+    background: none;
   }
 }

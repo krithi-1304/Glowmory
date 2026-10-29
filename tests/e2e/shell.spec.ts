@@ -59,13 +59,13 @@ test('text remains readable at 200% and with reduced motion', async ({
 
 test('saves a memory, survives reload, and recalls it', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Write' }).click();
+  await page.getByRole('button', { name: 'Leave a Little Light' }).click();
   await page
     .getByPlaceholder('Write it down so it can glow…')
     .fill('A warm cup of chai with my sister.');
   await page.getByRole('button', { name: 'Let it glow' }).click();
   await page.reload();
-  await page.getByRole('button', { name: 'Shake the jar' }).click();
+  await page.getByRole('button', { name: 'Ask the Jar' }).click();
   await page.getByRole('button', { name: 'Surprise me' }).click();
   await expect(
     page.getByText('A warm cup of chai with my sister.'),
