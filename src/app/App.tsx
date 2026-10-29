@@ -137,7 +137,14 @@ export function App() {
   const [releasingNote, setReleasingNote] = useState(false);
   const [breathing, setBreathing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [ritualBusy, setRitualBusy] = useState(false);
   const savingRef = useRef(false);
+  useEffect(() => {
+    if (!birthKey) return;
+    const calm = settings.calmMode || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => setRitualBusy(false), calm ? 3000 : 8700);
+    return () => window.clearTimeout(timer);
+  }, [birthKey, settings.calmMode]);
   const audioUnlocked = useRef(false);
   const enableMotion = async () => {
     const orientation =
@@ -209,6 +216,7 @@ export function App() {
       setReleasingNote(false);
       setNotice('A new firefly was born.');
       setBirthMemoryId(memory.id);
+      setRitualBusy(true);
       setBirthKey((key) => key + 1);
       if (settings.sound) playChime(settings.volume);
     } catch {
@@ -271,7 +279,7 @@ export function App() {
         calmMode={settings.calmMode}
         onSelectMemory={selectFireflyMemory}
       >
-        {panel === null && (
+        {panel === null && !ritualBusy && (
           <div className="jar-interactions" aria-label="Jar interactions">
             <JarAction
               kind="paper"
@@ -280,6 +288,12 @@ export function App() {
             />
             <JarAction kind="firefly" label="Ask the Jar" onClick={openAsk} />
           </div>
+        )}
+        {ritualBusy && (
+          <button className="jar-feeling-choice" style={{ pointerEvents: 'auto', position: 'absolute', top: '16rem', left: '-3rem', width: '6rem' }} onClick={() => {
+            setBirthKey(0);
+            setRitualBusy(false);
+          }}>Skip animation</button>
         )}
         {panel === 'low' && !jarReply && (
           <span className="jar-warm-glow" aria-hidden="true" />

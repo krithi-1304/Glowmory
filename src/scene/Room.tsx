@@ -488,7 +488,7 @@ function Firefly({
     let positionY = flightY;
     let birthElapsed = 0;
     if (isBirthFly && birthStarted.current !== null) {
-      birthElapsed = (performance.now() - birthStarted.current) / 1000;
+      birthElapsed = ((performance.now() - birthStarted.current) / 1000) * (calmMode ? 3 : 1);
       const driftOut = THREE.MathUtils.smoothstep(birthElapsed, 7.4, 8.6);
       positionX = THREE.MathUtils.lerp(0.5, flightX, driftOut);
       positionY = THREE.MathUtils.lerp(0.82, flightY, driftOut);
@@ -618,9 +618,11 @@ function Firefly({
 function BirthRitual({
   birthKey,
   jar,
+  calmMode,
 }: {
   birthKey: number;
   jar: WorldRect;
+  calmMode: boolean;
 }) {
   const start = useRef(0);
   const note = useRef<THREE.Group>(null);
@@ -636,7 +638,7 @@ function BirthRitual({
   useFrame(() => {
     if (!birthKey || !start.current) return;
     const elapsed = (performance.now() - start.current) / 1000;
-    const t = Math.min(elapsed, 8);
+    const t = Math.min(elapsed * (calmMode ? 3 : 1), 8);
     const targetX = jar.left + jar.width * 0.5;
     const targetY = jar.top - jar.height * 0.5;
     const mouthY = targetY + jar.height * 0.75;
@@ -644,12 +646,12 @@ function BirthRitual({
       const fold = THREE.MathUtils.smoothstep(t, 0.7, 2.3);
       const travel = THREE.MathUtils.smoothstep(t, 0.15, 2.1);
       note.current.position.set(
-        targetX + Math.sin(t * 1.8) * jar.width * 0.025,
+        targetX + Math.sin(Math.min(t, 3.05) * 1.45) * jar.width * 0.018,
         THREE.MathUtils.lerp(
+          mouthY + jar.height * 0.12,
           mouthY - jar.height * 0.08,
-          targetY + jar.height * 0.14,
           travel,
-        ) + Math.sin(t * 2.2) * jar.height * 0.018,
+        ),
         2.5,
       );
       note.current.rotation.z = -0.08 + Math.sin(t * 1.7) * 0.045;
@@ -782,7 +784,7 @@ function RoomScene({
         onSelectMemory={onSelectMemory}
       />
       <Caterpillar path={crawler} jarWidth={jar.width} calmMode={calmMode} />
-      <BirthRitual birthKey={birthKey} jar={jar} />
+      {birthKey > 0 && <BirthRitual birthKey={birthKey} jar={jar} calmMode={calmMode} />}
     </>
   );
 }
