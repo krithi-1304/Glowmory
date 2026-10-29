@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { strings } from '../strings';
 import { Room } from '../scene/Room';
+import { Wordmark } from './Wordmark';
 import { feelingColors } from '../scene/palette';
 import { useMemoryStore } from '../store/memoryStore';
 import type { FeelingId, Memory } from '../store/types';
@@ -79,6 +80,8 @@ function JarChit({
         if (event.target === event.currentTarget && releasing) onReleaseEnd();
       }}
     >
+      <span className="chit-fold chit-fold--left" aria-hidden="true" />
+      <span className="chit-fold chit-fold--right" aria-hidden="true" />
       <button className="jar-chit__close" onClick={onClose} aria-label="Close note">
         ×
       </button>
@@ -139,6 +142,32 @@ export function App() {
   const [saving, setSaving] = useState(false);
   const [ritualBusy, setRitualBusy] = useState(false);
   const savingRef = useRef(false);
+  useEffect(() => {
+    if (!panel) return;
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    if (!dialog) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const controls = () => Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]',
+    )).filter((node) => node.getClientRects().length > 0);
+    if (!dialog.contains(document.activeElement)) controls()[0]?.focus();
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const items = controls();
+      const first = items[0];
+      const last = items.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first?.focus();
+      }
+    };
+    dialog.addEventListener('keydown', trap);
+    return () => {
+      dialog.removeEventListener('keydown', trap);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [panel, jarReply]);
   useEffect(() => {
     if (!birthKey) return;
     const calm = settings.calmMode || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -250,6 +279,7 @@ export function App() {
     }
   };
   const selectFireflyMemory = (id: string) => {
+    if (ritualBusy || panel !== null) return;
     if (!openMemory(id)) return;
     setPanel('reader');
   };
@@ -363,18 +393,13 @@ export function App() {
           </>
         )}
       </Room>
-      <section className="scene-copy" aria-label="Glowmory">
+      <section className={`scene-copy${ritualBusy ? ' scene-copy--ritual' : ''}${panel === 'reader' || (panel === 'low' && jarReply) ? ' scene-copy--reading' : ''}`} aria-label="Glowmory">
         <img
           className="brand-mark"
           src={`${import.meta.env.BASE_URL}assets/glowmory-jar-thread.png`}
           alt="A glowing firefly inside a glass jar"
         />
-        <h1>
-          {strings.appName}
-          <span className="title-firefly-glint" aria-hidden="true">
-            {strings.appName}
-          </span>
-        </h1>
+        <h1 aria-label={strings.appName}><Wordmark /></h1>
         <p className="tagline">{strings.tagline}</p>
         <p className="helper">{strings.helper}</p>
       </section>

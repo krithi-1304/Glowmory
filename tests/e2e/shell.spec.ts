@@ -26,11 +26,14 @@ test('production shell loads with local assets, no errors and accessible text', 
   ).toBeVisible();
   await expect(page.getByText("Good days don't go. They glow.")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
+  // The handwritten note face is loaded on demand after opening a note.
+  await page.evaluate(() => document.fonts.load('32px Caveat'));
   expect(
     await page.evaluate(
       () =>
         document.fonts.check('16px Nunito') &&
-        document.fonts.check('32px Caveat'),
+        document.fonts.check('32px Caveat') &&
+        document.fonts.check('32px "Cinzel Decorative"'),
     ),
   ).toBe(true);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

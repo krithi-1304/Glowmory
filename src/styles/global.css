@@ -918,3 +918,44 @@ button:disabled {
     background: none;
   }
 }
+
+/* The wordmark has permanent SVG relief; motion only adds illumination. */
+.scene-copy h1 { width: min(35rem, 88vw); line-height: 1; text-shadow: none; -webkit-text-stroke: 0; }
+.wordmark { display: block; width: 100%; overflow: visible; font-family: 'Cinzel Decorative', serif; font-size: 66px; font-weight: 400; filter: drop-shadow(0 5px 4px #100e23) drop-shadow(0 0 12px rgb(255 217 122 / 20%)); }
+.wordmark-sweep { animation: wordmark-light 22s ease-in-out infinite; }
+.wordmark-firefly { filter: drop-shadow(0 0 4px #ffd97a); animation: wordmark-visitor 22s ease-in-out infinite; }
+@keyframes wordmark-light { 0%, 8% { transform: translateX(0); } 28%, 100% { transform: translateX(740px); } }
+@keyframes wordmark-visitor { 0% { opacity: 0; transform: translate(-15px, 20px); } 7% { opacity: 1; transform: translate(0, 0); } 28% { opacity: .8; transform: translate(560px, -12px); } 34%, 100% { opacity: 0; transform: translate(575px, -24px); } }
+.scene-copy .tagline { margin-top: .65rem; font-size: clamp(.95rem, 1.4vw, 1.15rem); letter-spacing: .025em; }
+.scene-copy .helper { margin-top: .45rem; font-size: .875rem; }
+.brand-mark { width: clamp(2.25rem, 4vw, 3.4rem); margin-bottom: .4rem; }
+.jar-action { top: -2.6rem; }
+.jar-action__label { top: -1rem; font-family: var(--font-ui); font-size: .8rem; line-height: 1.4; }
+.jar-action--paper .jar-action__label { left: -5.6rem; width: 5.5rem; }
+.jar-action--firefly .jar-action__label { left: 3rem; width: 4.8rem; }
+.panel--parchment .primary-button { width: auto; min-width: 70%; border: 1px solid #d6b075; background: linear-gradient(#fff1cf,#e9c68b); box-shadow: inset 0 1px #fff9e9, 0 3px 0 #c59b65, 0 8px 18px rgb(120 85 42 / 14%); font-family: 'Cinzel Decorative', serif; font-size: .95rem; }
+.panel--parchment .primary-button:hover, .panel--parchment .primary-button:focus-visible { box-shadow: inset 0 1px #fff9e9, 0 3px 0 #c59b65, 0 0 22px #ffd97a; }
+@media (prefers-reduced-motion: reduce) { .wordmark-sweep, .wordmark-firefly { animation: none; opacity: 0; } }
+@media (min-width: 900px) and (max-height: 760px) {
+  .scene-copy { top: .65rem; }
+  .brand-mark { width: 1.8rem; margin-bottom: .1rem; }
+  .scene-copy h1 { width: 25rem; }
+  .scene-copy .tagline { margin-top: .2rem; font-size: .95rem; }
+  .scene-copy .helper { margin-top: .15rem; font-size: .8rem; }
+}
+.jar-chit { perspective: 850px; }
+.jar-chit > .chit-fold { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 4; background: #fff3df; pointer-events: none; backface-visibility: visible; animation: paper-open 1.4s cubic-bezier(.22,.7,.25,1) both; }
+.chit-fold--left { left: 0; transform-origin: right center; --fold-angle: 168deg; border-radius: 20px 0 0 10px; }
+.chit-fold--right { right: 0; transform-origin: left center; --fold-angle: -168deg; border-radius: 0 8px 18px 0; }
+@keyframes paper-open { 0%, 28% { transform: rotateY(var(--fold-angle)); filter: brightness(.78); opacity: 1; } 86% { transform: rotateY(0deg); filter: brightness(1); opacity: 1; } 100% { transform: rotateY(0deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .jar-chit > .chit-fold { display: none; } }
+.scene-copy .tagline, .scene-copy .helper { transition: opacity 300ms ease; }
+.scene-copy--ritual .tagline, .scene-copy--ritual .helper { opacity: 0; }
+.scene-copy { transition: opacity 300ms ease; }
+.scene-copy--reading { opacity: 0; }
+.jar-chit { top: calc(1rem - var(--jar-mouth-y)); max-height: calc(var(--jar-mouth-y) - 2rem); }
+@keyframes chit-emerge {
+  0% { opacity: 0; transform: translate(-50%, calc(var(--jar-mouth-y) - 1rem)) rotate(-8deg) scale(.38); }
+  32% { opacity: 1; transform: translate(calc(-50% - .35rem), calc(var(--jar-mouth-y) * .45)) rotate(3deg) scale(.46); }
+  100% { opacity: 1; transform: translate(-50%, 0) rotate(-.7deg) scale(1); }
+}

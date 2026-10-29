@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Suspense, type ReactNode } from 'react';
+import { Suspense, type ReactNode, type CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { feelingColors } from './palette';
@@ -510,7 +510,7 @@ function Firefly({
         ref.current.visible = false;
         return;
       }
-      reveal = THREE.MathUtils.smoothstep(birthElapsed, 5.7, 7.4);
+      reveal = THREE.MathUtils.smoothstep(birthElapsed, 6.2, 7.4);
     }
     ref.current.visible = reveal > 0.01;
     ref.current.scale.setScalar(Math.max(reveal, 0.001));
@@ -628,6 +628,7 @@ function BirthRitual({
   const note = useRef<THREE.Group>(null);
   const foldedPanel = useRef<THREE.Group>(null);
   const serum = useRef<THREE.Group>(null);
+  const trail = useRef<Array<THREE.Sprite | null>>([]);
   const noteMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const foldedNoteMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const noteDetailMaterial = useRef<THREE.MeshBasicMaterial>(null);
@@ -642,6 +643,18 @@ function BirthRitual({
     const targetX = jar.left + jar.width * 0.5;
     const targetY = jar.top - jar.height * 0.5;
     const mouthY = targetY + jar.height * 0.75;
+    trail.current.forEach((sprite, index) => {
+      if (!sprite) return;
+      const trailingTime = t - (index + 1) * 0.075;
+      const progress = THREE.MathUtils.smoothstep(trailingTime, 3.05, 5.3);
+      const curve = Math.sin(progress * Math.PI);
+      sprite.visible = !calmMode && t > 3.15 && t < 5.3;
+      sprite.position.set(
+        targetX + Math.sin(trailingTime * 1.45) * jar.width * 0.018 + curve * jar.width * 0.46,
+        mouthY - jar.height * 0.08 + curve * jar.height * 0.52,
+        2.5,
+      );
+    });
     if (note.current) {
       const fold = THREE.MathUtils.smoothstep(t, 0.7, 2.3);
       const travel = THREE.MathUtils.smoothstep(t, 0.15, 2.1);
@@ -669,26 +682,33 @@ function BirthRitual({
         noteDetailMaterial.current.opacity = noteOpacity * 0.45;
     }
     if (serum.current) {
-      const drip = THREE.MathUtils.smoothstep(t, 3.05, 5.9);
-      serum.current.visible = t > 2.7 && t < 6.4;
+      const flight = calmMode ? 0 : THREE.MathUtils.smoothstep(t, 3.05, 5.3);
+      const arc = Math.sin(flight * Math.PI);
+      const drip = THREE.MathUtils.smoothstep(t, 5.3, 6.2);
+      serum.current.visible = t > 2.7 && t < 6.8;
       serum.current.position.set(
-        targetX + Math.sin(t * 1.45) * jar.width * 0.018,
+        targetX + Math.sin(t * 1.45) * jar.width * 0.018 + arc * jar.width * 0.46,
         THREE.MathUtils.lerp(
           mouthY - jar.height * 0.08,
           targetY - jar.height * 0.32,
           drip,
-        ),
+        ) + arc * jar.height * 0.52,
         2.55,
       );
-      const dropScale = 0.24 + Math.sin(t * 3.1) * 0.012;
+      const dropScale = 0.15 - arc * 0.07 + Math.sin(t * 3.1) * 0.006;
       serum.current.scale.set(dropScale, dropScale, dropScale);
       if (serumMaterial.current)
         serumMaterial.current.opacity =
-          t < 3.3 ? (t - 2.7) / 0.6 : t > 5.8 ? 1 - (t - 5.8) / 0.6 : 0.9;
+          t < 3.3 ? (t - 2.7) / 0.6 : t > 6.2 ? 1 - (t - 6.2) / 0.6 : 0.9;
     }
   });
   return (
     <group>
+      {[0, 1, 2].map((index) => (
+        <sprite key={index} ref={(node) => { trail.current[index] = node; }} scale={[0.15, 0.15, 1]} visible={false}>
+          <spriteMaterial map={getGlowTexture(feelingColors.proud)} transparent opacity={0.2 / (index + 1)} depthWrite={false} toneMapped={false} />
+        </sprite>
+      ))}
       <group ref={note}>
         <mesh position={[-0.105, 0, 0]}>
           <planeGeometry args={[0.21, 0.3]} />
@@ -723,6 +743,9 @@ function BirthRitual({
         </mesh>
       </group>
       <group ref={serum} visible={false}>
+        <sprite scale={[2.8, 2.8, 1]}>
+          <spriteMaterial map={getGlowTexture(feelingColors.proud)} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
+        </sprite>
         <mesh>
           <latheGeometry args={[dropletProfile, 28]} />
           <meshBasicMaterial
@@ -859,9 +882,10 @@ export function Room({
         <div
           className="jar-overlay-anchor"
           style={{
+            '--jar-mouth-y': `${frame.offsetY + 340 * frame.scale}px`,
             left: frame.offsetX + 770 * frame.scale,
             top: frame.offsetY + 340 * frame.scale,
-          }}
+          } as CSSProperties}
         >
           {children}
         </div>
