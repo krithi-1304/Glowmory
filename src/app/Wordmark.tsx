@@ -22,6 +22,11 @@ export function Wordmark() {
       <use href="#letter-shape" fill="url(#letter-gold)" stroke="#ffefca" strokeWidth=".35" />
       <g clipPath="url(#letter-clip)"><rect className="wordmark-sweep" x="-100" width="100" height="100" fill="url(#letter-light)" /></g>
       <ellipse className="wordmark-firefly" cx="28" cy="65" rx="2" ry="1.5" fill="#ffe5a0" />
+      <g className="wordmark-glints" fill="#fff5d8">
+        <path className="wordmark-glint" transform="translate(40 0)" d="M91 31l1 4 4 1-4 1-1 4-1-4-4-1 4-1Z" />
+        <path className="wordmark-glint" d="M313 25l1 4 4 1-4 1-1 4-1-4-4-1 4-1Z" />
+        <path className="wordmark-glint" d="M508 45l1 4 4 1-4 1-1 4-1-4-4-1 4-1Z" />
+      </g>
     </svg>
   );
 }

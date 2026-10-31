@@ -41,9 +41,9 @@ export function parseImport(raw: string): {
         typeof item.id === 'string' &&
         typeof item.text === 'string' &&
         item.text.length <= 280 &&
-        ['proud', 'loved', 'peaceful', 'silly', 'brave', 'thankful'].includes(
+        (item.feeling === undefined || ['proud', 'loved', 'peaceful', 'silly', 'brave', 'thankful'].includes(
           item.feeling as string,
-        ) &&
+        )) &&
         ['active', 'sleeping', 'sealed'].includes(item.status as string)
       );
     })

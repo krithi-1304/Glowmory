@@ -16,6 +16,12 @@ const memory = (
   look: { size: 1, wing: 0, hue: 0, seed: 0 },
 });
 describe('pickMemory', () => {
+  it('recalls an untagged note without assigning it an emotion', () => {
+    const note = memory('untagged');
+    delete note.feeling;
+    expect(pickMemory([note], 'any', 1)).toMatchObject({ id: 'untagged' });
+    expect(pickMemory([note], 'loved', 1)).toBeNull();
+  });
   it('filters by feeling and excludes sleeping memories', () => {
     expect(
       pickMemory(

@@ -19,7 +19,7 @@ interface MemoryState {
   add: (
     text: string,
     senseAnswer: string,
-    feeling: FeelingId,
+    feeling?: FeelingId,
   ) => Promise<Memory>;
   update: (id: string, patch: Partial<Memory>) => Promise<void>;
   setSettings: (patch: Partial<Settings>) => Promise<void>;
@@ -48,7 +48,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       ...(senseAnswer.trim()
         ? { senseAnswer: senseAnswer.trim().slice(0, 140) }
         : {}),
-      feeling,
+      ...(feeling ? { feeling } : {}),
       createdAt: Date.now(),
       status: 'active',
       openCount: 0,
@@ -60,8 +60,8 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       },
     };
     const memories = [...get().memories, memory];
-    set({ memories });
     await persist(memories, get().settings);
+    set({ memories });
     return memory;
   },
   update: async (id, patch) => {

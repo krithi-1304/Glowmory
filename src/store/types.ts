@@ -5,7 +5,7 @@ export interface Memory {
   id: string;
   text: string;
   senseAnswer?: string;
-  feeling: FeelingId;
+  feeling?: FeelingId;
   createdAt: number;
   status: MemoryStatus;
   openCount: number;

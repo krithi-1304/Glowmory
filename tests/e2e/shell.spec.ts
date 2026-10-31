@@ -63,14 +63,44 @@ test('text remains readable at 200% and with reduced motion', async ({
 test('saves a memory, survives reload, and recalls it', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Leave a Little Light' }).click();
+  await expect(page.locator('.feeling-grid')).toHaveCount(0);
   await page
     .getByPlaceholder('Write it down so it can glow…')
     .fill('A warm cup of chai with my sister.');
-  await page.getByRole('button', { name: 'Let it glow' }).click();
+  await page.getByRole('button', { name: 'Let it glow' }).evaluate((button: HTMLButtonElement) => {
+    button.click();
+    button.click();
+  });
+  await expect(page.getByText('A new firefly was born.')).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'Ask the Jar' }).click();
   await page.getByRole('button', { name: 'Surprise me' }).click();
   await expect(
     page.getByText('A warm cup of chai with my sister.'),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Let this light go' }).click();
+  await expect(page.locator('.jar-chit')).toHaveCount(0);
+  const count = await page.evaluate(() => new Promise<number>((resolve, reject) => {
+    const request = indexedDB.open('keyval-store');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const read = db.transaction('keyval').objectStore('keyval').get('glowmory-v1');
+      read.onsuccess = () => { resolve(read.result.memories.length); db.close(); };
+      read.onerror = () => reject(read.error);
+    };
+  }));
+  expect(count).toBe(1);
+});
+
+test('caterpillar supports keyboard dismissal and the moon opens settings', async ({ page }) => {
+  await page.goto('/');
+  const caterpillar = page.getByRole('button', { name: 'Visit the caterpillar' });
+  await caterpillar.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Even the tiniest light can brighten the night.')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(caterpillar).toHaveAttribute('aria-expanded', 'false');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
 });

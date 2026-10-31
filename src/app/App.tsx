@@ -90,7 +90,7 @@ function JarChit({
       </p>
       {memory ? (
         <>
-          <h2>{strings.feelings[memory.feeling]}</h2>
+          <h2>{memory.feeling ? strings.feelings[memory.feeling] : 'A little light'}</h2>
           <p className="jar-chit__message" role="status">{memory.text}</p>
           {memory.senseAnswer && (
             <p className="jar-chit__sense">{memory.senseAnswer}</p>
@@ -131,7 +131,6 @@ export function App() {
   >(null);
   const [text, setText] = useState('');
   const [sense, setSense] = useState('');
-  const [feeling, setFeeling] = useState<FeelingId>('proud');
   const [notice, setNotice] = useState('');
   const [birthKey, setBirthKey] = useState(0);
   const [birthMemoryId, setBirthMemoryId] = useState<string | null>(null);
@@ -238,7 +237,7 @@ export function App() {
     savingRef.current = true;
     setSaving(true);
     try {
-      const memory = await add(text, sense, feeling);
+      const memory = await add(text, sense);
       setText('');
       setSense('');
       setPanel(null);
@@ -394,11 +393,6 @@ export function App() {
         )}
       </Room>
       <section className={`scene-copy${ritualBusy ? ' scene-copy--ritual' : ''}${panel === 'reader' || (panel === 'low' && jarReply) ? ' scene-copy--reading' : ''}`} aria-label="Glowmory">
-        <img
-          className="brand-mark"
-          src={`${import.meta.env.BASE_URL}assets/glowmory-jar-thread.png`}
-          alt="A glowing firefly inside a glass jar"
-        />
         <h1 aria-label={strings.appName}><Wordmark /></h1>
         <p className="tagline">{strings.tagline}</p>
         <p className="helper">{strings.helper}</p>
@@ -410,7 +404,8 @@ export function App() {
           aria-label="Settings"
         >
           <svg className="scene-action-icon" aria-hidden="true" viewBox="0 0 20 20">
-            <path d="M3 5.2h14M3 10h14M3 14.8h14" />
+            <circle cx="10" cy="2.5" r="1.4" />
+            <path d="M10 4v2M12 6a6 6 0 1 0 4.5 8.5A5.5 5.5 0 0 1 12 6Z" />
           </svg>
           <span>Tend the Jar</span>
         </button>
@@ -469,17 +464,6 @@ export function App() {
                     />
                   </label>
                 </details>
-                <div className="feeling-grid">
-                  {feelings.map(([id, label]) => (
-                    <button
-                      key={id}
-                      className={feeling === id ? 'selected' : ''}
-                      onClick={() => setFeeling(id)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
                 <button
                   className="primary-button"
                   onClick={() => void save()}
@@ -612,7 +596,7 @@ export function App() {
                 <h2>All memories</h2>
                 {memories.map((memory) => (
                   <article className="memory-row" key={memory.id}>
-                    <strong>{strings.feelings[memory.feeling]}</strong>
+                    <strong>{memory.feeling ? strings.feelings[memory.feeling] : 'A little light'}</strong>
                     <p>{memory.text}</p>
                     <small>
                       {new Date(memory.createdAt).toLocaleDateString()}

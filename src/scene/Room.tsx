@@ -95,7 +95,7 @@ const sceneFragmentShader = `
     color += vec3(0.055, 0.047, 0.07) * cloudVeil * 0.035 * uMotion;
 
     float moonHalo = exp(-length((topUv - vec2(0.77, 0.17)) / vec2(0.065, 0.085)) * 3.2);
-    color += vec3(0.1, 0.082, 0.055) * moonHalo * (0.5 + 0.5 * sin(time * 0.22)) * 0.055;
+    color += vec3(0.1, 0.082, 0.055) * moonHalo * (0.5 + 0.5 * sin(time * 0.22)) * 0.055 * uMotion;
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -268,25 +268,36 @@ function Caterpillar({
   path,
   jarWidth,
   calmMode,
+  awake,
 }: {
   path: WorldRect;
   jarWidth: number;
   calmMode: boolean;
+  awake: boolean;
 }) {
   const root = useRef<THREE.Group>(null);
+  const head = useRef<THREE.Group>(null);
+  const eyes = useRef<Array<THREE.Mesh | null>>([]);
+  const antennae = useRef<Array<THREE.Mesh | null>>([]);
+  const crawlTime = useRef(0);
   const segments = useRef<Array<THREE.Group | null>>([]);
   const legs = useRef<Array<THREE.Mesh | null>>([]);
   const unit = jarWidth * 0.12;
   const bodyLength = unit * 1.55;
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     if (!root.current) return;
+    if (!awake && !calmMode) crawlTime.current += Math.min(delta, 0.05);
     const speed = calmMode ? 0.007 : 0.018;
-    const travel = (clock.elapsedTime * speed + 0.12) % 1;
+    const travel = (crawlTime.current * speed + 0.12) % 1;
     const x =
       path.left +
       unit * 0.85 +
       travel * Math.max(0, path.width - bodyLength - unit * 1.7);
-    const time = clock.elapsedTime * (calmMode ? 2 : 5.2);
+    const time = crawlTime.current * (calmMode ? 2 : 5.2);
+    if (head.current) head.current.rotation.z = THREE.MathUtils.lerp(head.current.rotation.z, awake ? 0.14 : 0, calmMode ? 1 : 0.08);
+    const blink = awake && !calmMode ? Math.pow(Math.max(0, Math.sin(clock.elapsedTime * 2.1)), 24) : 0;
+    eyes.current.forEach((eye) => { if (eye) eye.scale.y = 0.05 * (1 - blink * 0.88); });
+    antennae.current.forEach((antenna, index) => { if (antenna) antenna.rotation.z = 0.28 + (awake && !calmMode ? Math.sin(clock.elapsedTime * 3 + index) * 0.16 : 0); });
     root.current.position.set(
       x,
       path.top - path.height * 0.58 + Math.sin(time * 0.55) * unit * 0.018,
@@ -329,6 +340,7 @@ function Caterpillar({
           </mesh>
         </group>
       ))}
+      <group ref={head}>
       <mesh
         position={[0.52 * unit, unit * 0.015, 0]}
         scale={[0.22, 0.21, 0.18]}
@@ -344,8 +356,9 @@ function Caterpillar({
       {[-1, 1].map((side) => (
         <mesh
           key={`eye-${side}`}
+          ref={(node) => { eyes.current[side > 0 ? 1 : 0] = node; }}
           position={[0.6 * unit, unit * 0.055, side * unit * 0.15]}
-          scale={[0.038, 0.044, 0.024]}
+          scale={[0.045, 0.05, 0.028]}
         >
           <sphereGeometry args={[unit, 10, 8]} />
           <meshBasicMaterial color="#302c28" />
@@ -354,6 +367,7 @@ function Caterpillar({
       {[-1, 1].map((side) => (
         <mesh
           key={`feel-${side}`}
+          ref={(node) => { antennae.current[side > 0 ? 1 : 0] = node; }}
           position={[0.68 * unit, unit * 0.2, side * unit * 0.07]}
           rotation={[side * 0.2, 0, 0.28]}
           scale={[0.018, 0.11, 0.018]}
@@ -362,6 +376,7 @@ function Caterpillar({
           <meshStandardMaterial color="#71834b" roughness={0.7} />
         </mesh>
       ))}
+      </group>
       {Array.from({ length: 6 }, (_, index) =>
         [-1, 1].map((side) => {
           const legIndex = index * 2 + (side > 0 ? 1 : 0);
@@ -447,7 +462,7 @@ function Firefly({
   const birthComplete = useRef(false);
   const wingSpan = 0.8 + THREE.MathUtils.clamp(memory.look?.wing ?? 0.5, 0, 1) * 0.4;
   const seed = memory.look?.seed ?? 0.5;
-  const color = feelingColors[memory.feeling];
+  const color = seed > 0.5 ? '#FFD97A' : '#FFE4A6';
   const isBirthFly = birthKey > 0 && birthMemoryId === memory.id;
   const glow = useMemo(() => getGlowTexture(color), [color]);
 
@@ -462,7 +477,7 @@ function Firefly({
     if (!ref.current) return;
     const elapsed = clock.elapsedTime;
     const speed = calmMode ? 0.095 : 0.16 + seed * 0.085;
-    const flight = elapsed * speed + phase;
+    const flight = (elapsed + 2.1 * Math.sin(elapsed * 0.43 + phase)) * speed + phase;
     const wander = elapsed * (speed * 0.53 + 0.013) + phase * 1.71;
     const meander = elapsed * (speed * 0.29 + 0.009) + phase * 2.37;
     const drift = elapsed * (speed * 0.17 + 0.007) + phase * 0.83;
@@ -549,18 +564,18 @@ function Firefly({
       }}
     >
       <group scale={scale}>
-        <mesh position={[-0.016, 0, 0]} scale={[0.082, 0.027, 0.025]}>
+        <mesh position={[-0.016, 0, 0]} scale={[0.057, 0.033, 0.028]}>
           <sphereGeometry args={[1, 16, 10]} />
-          <meshBasicMaterial color="#38263e" />
+          <meshBasicMaterial color="#3a2d25" />
         </mesh>
         <mesh position={[-0.077, 0, 0]} scale={[0.025, 0.023, 0.024]}>
           <sphereGeometry args={[1, 14, 10]} />
-          <meshBasicMaterial color="#49334a" />
+          <meshBasicMaterial color="#49392c" />
         </mesh>
         <mesh
           ref={wingLeft}
           position={[-0.015, 0.027, 0.012]}
-          scale={[0.053 * wingSpan, 0.017, 0.005]}
+          scale={[0.048 * wingSpan, 0.029, 0.009]}
         >
           <sphereGeometry args={[1, 14, 8]} />
           <meshBasicMaterial
@@ -575,19 +590,19 @@ function Firefly({
         <mesh
           ref={wingRight}
           position={[-0.015, -0.027, -0.012]}
-          scale={[0.053 * wingSpan, 0.017, 0.005]}
+          scale={[0.048 * wingSpan, 0.029, 0.009]}
         >
           <sphereGeometry args={[1, 14, 8]} />
           <meshBasicMaterial
             ref={wingRightMaterial}
-            color="#eee5ff"
+            color="#fff0df"
             transparent
             opacity={0.34}
             depthWrite={false}
             toneMapped={false}
           />
         </mesh>
-        <mesh position={[0.083, 0, 0]} scale={[0.034, 0.027, 0.025]}>
+        <mesh position={[0.083, 0, 0]} scale={[0.04, 0.032, 0.028]}>
           <sphereGeometry args={[1, 14, 10]} />
           <meshBasicMaterial
             ref={lantern}
@@ -628,7 +643,6 @@ function BirthRitual({
   const note = useRef<THREE.Group>(null);
   const foldedPanel = useRef<THREE.Group>(null);
   const serum = useRef<THREE.Group>(null);
-  const trail = useRef<Array<THREE.Sprite | null>>([]);
   const noteMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const foldedNoteMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const noteDetailMaterial = useRef<THREE.MeshBasicMaterial>(null);
@@ -643,18 +657,6 @@ function BirthRitual({
     const targetX = jar.left + jar.width * 0.5;
     const targetY = jar.top - jar.height * 0.5;
     const mouthY = targetY + jar.height * 0.75;
-    trail.current.forEach((sprite, index) => {
-      if (!sprite) return;
-      const trailingTime = t - (index + 1) * 0.075;
-      const progress = THREE.MathUtils.smoothstep(trailingTime, 3.05, 5.3);
-      const curve = Math.sin(progress * Math.PI);
-      sprite.visible = !calmMode && t > 3.15 && t < 5.3;
-      sprite.position.set(
-        targetX + Math.sin(trailingTime * 1.45) * jar.width * 0.018 + curve * jar.width * 0.46,
-        mouthY - jar.height * 0.08 + curve * jar.height * 0.52,
-        2.5,
-      );
-    });
     if (note.current) {
       const fold = THREE.MathUtils.smoothstep(t, 0.7, 2.3);
       const travel = THREE.MathUtils.smoothstep(t, 0.15, 2.1);
@@ -682,20 +684,18 @@ function BirthRitual({
         noteDetailMaterial.current.opacity = noteOpacity * 0.45;
     }
     if (serum.current) {
-      const flight = calmMode ? 0 : THREE.MathUtils.smoothstep(t, 3.05, 5.3);
-      const arc = Math.sin(flight * Math.PI);
-      const drip = THREE.MathUtils.smoothstep(t, 5.3, 6.2);
+      const drip = THREE.MathUtils.smoothstep(t, 3.3, 6.2);
       serum.current.visible = t > 2.7 && t < 6.8;
       serum.current.position.set(
-        targetX + Math.sin(t * 1.45) * jar.width * 0.018 + arc * jar.width * 0.46,
+        targetX + Math.sin(t * 1.45) * jar.width * 0.018,
         THREE.MathUtils.lerp(
           mouthY - jar.height * 0.08,
           targetY - jar.height * 0.32,
           drip,
-        ) + arc * jar.height * 0.52,
+        ),
         2.55,
       );
-      const dropScale = 0.15 - arc * 0.07 + Math.sin(t * 3.1) * 0.006;
+      const dropScale = 0.15 + Math.sin(t * 3.1) * 0.006;
       serum.current.scale.set(dropScale, dropScale, dropScale);
       if (serumMaterial.current)
         serumMaterial.current.opacity =
@@ -704,11 +704,6 @@ function BirthRitual({
   });
   return (
     <group>
-      {[0, 1, 2].map((index) => (
-        <sprite key={index} ref={(node) => { trail.current[index] = node; }} scale={[0.15, 0.15, 1]} visible={false}>
-          <spriteMaterial map={getGlowTexture(feelingColors.proud)} transparent opacity={0.2 / (index + 1)} depthWrite={false} toneMapped={false} />
-        </sprite>
-      ))}
       <group ref={note}>
         <mesh position={[-0.105, 0, 0]}>
           <planeGeometry args={[0.21, 0.3]} />
@@ -773,6 +768,7 @@ function RoomScene({
   birthMemoryId,
   calmMode,
   motionAllowed,
+  crawlerAwake,
   onSelectMemory,
 }: {
   frame: SceneFrame;
@@ -781,6 +777,7 @@ function RoomScene({
   birthMemoryId: string | null;
   calmMode: boolean;
   motionAllowed: boolean;
+  crawlerAwake: boolean;
   onSelectMemory: (id: string) => void;
 }) {
   const { camera, size, viewport } = useThree();
@@ -806,7 +803,7 @@ function RoomScene({
         birthMemoryId={birthMemoryId}
         onSelectMemory={onSelectMemory}
       />
-      <Caterpillar path={crawler} jarWidth={jar.width} calmMode={calmMode} />
+      <Caterpillar path={crawler} jarWidth={jar.width} calmMode={calmMode} awake={crawlerAwake} />
       {birthKey > 0 && <BirthRitual birthKey={birthKey} jar={jar} calmMode={calmMode} />}
     </>
   );
@@ -829,6 +826,7 @@ export function Room({
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const frame = useSceneFrame(stage);
+  const [crawlerAwake, setCrawlerAwake] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
@@ -872,12 +870,27 @@ export function Room({
                 birthMemoryId={birthMemoryId}
                 calmMode={calmMode || prefersReducedMotion}
                 motionAllowed={!prefersReducedMotion}
+                crawlerAwake={crawlerAwake}
                 onSelectMemory={onSelectMemory}
               />
             </Suspense>
           </Canvas>
         )}
       </div>
+      {frame && (
+        <div className="crawler-interaction" style={{
+          left: Math.min(frame.width - 58, Math.max(8, frame.width / 2 + (frame.offsetX + crawlerPath.x * frame.scale - frame.width / 2) * 5 / 4.25)),
+          top: frame.height / 2 + (frame.offsetY + crawlerPath.y * frame.scale - frame.height / 2) * 5 / 4.25,
+          width: Math.min(crawlerPath.width * frame.scale * 5 / 4.25, frame.width - Math.max(8, frame.width / 2 + (frame.offsetX + crawlerPath.x * frame.scale - frame.width / 2) * 5 / 4.25)),
+          height: Math.max(44, crawlerPath.height * frame.scale * 5 / 4.25),
+        }} onKeyDown={(event) => { if (event.key === 'Escape') setCrawlerAwake(false); }}>
+          <button className="crawler-hit" aria-label="Visit the caterpillar" aria-expanded={crawlerAwake} onClick={() => setCrawlerAwake((value) => !value)} />
+          {crawlerAwake && <div className="crawler-thought" role="status">
+            <p>Even the tiniest light can brighten the night.</p>
+            <button onClick={() => setCrawlerAwake(false)}>Thank you, little friend</button>
+          </div>}
+        </div>
+      )}
       {frame && children && (
         <div
           className="jar-overlay-anchor"

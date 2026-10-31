@@ -38,7 +38,7 @@ export async function saveSnapshot(snapshot: Snapshot): Promise<void> {
     try {
       localStorage.setItem(KEY, JSON.stringify(snapshot));
     } catch {
-      /* storage errors are surfaced by the UI on the next save */
+      throw new Error('Memory storage is unavailable.');
     }
   }
 }
