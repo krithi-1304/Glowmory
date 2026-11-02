@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { strings } from '../strings';
 import { Room } from '../scene/Room';
 import { Wordmark } from './Wordmark';
+import { MemoryFold } from './MemoryFold';
+import { capturePaper, type PaperSnapshot } from './paperSnapshot';
 import { feelingColors } from '../scene/palette';
 import { useMemoryStore } from '../store/memoryStore';
 import type { FeelingId, Memory } from '../store/types';
@@ -139,6 +141,7 @@ export function App() {
   const [releasingNote, setReleasingNote] = useState(false);
   const [breathing, setBreathing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [paperSnapshot, setPaperSnapshot] = useState<PaperSnapshot | null>(null);
   const [ritualBusy, setRitualBusy] = useState(false);
   const savingRef = useRef(false);
   useEffect(() => {
@@ -237,7 +240,9 @@ export function App() {
     savingRef.current = true;
     setSaving(true);
     try {
+      const snapshot = capturePaper();
       const memory = await add(text, sense);
+      setPaperSnapshot(snapshot);
       setText('');
       setSense('');
       setPanel(null);
@@ -302,6 +307,8 @@ export function App() {
   return (
     <main className="app-shell app-shell--scene">
       <Room
+        savingMemory={ritualBusy}
+        jarOpen={ritualBusy || panel === 'reader' || (panel === 'low' && Boolean(jarReply))}
         memories={memories}
         birthKey={birthKey}
         birthMemoryId={birthMemoryId}
@@ -392,6 +399,7 @@ export function App() {
           </>
         )}
       </Room>
+      {ritualBusy && paperSnapshot && !settings.calmMode && <MemoryFold key={birthKey} paper={paperSnapshot} />}
       <section className={`scene-copy${ritualBusy ? ' scene-copy--ritual' : ''}${panel === 'reader' || (panel === 'low' && jarReply) ? ' scene-copy--reading' : ''}`} aria-label="Glowmory">
         <h1 aria-label={strings.appName}><Wordmark /></h1>
         <p className="tagline">{strings.tagline}</p>

@@ -36,7 +36,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,woff,png}'],
+        globPatterns: ['**/*.{js,css,html,woff2,woff,png,jpg}'],
+        // Only hashed build files may skip revisioning; static icons are also
+        // discovered via the manifest and must have the same revision in both lists.
+        dontCacheBustURLsMatching: /-[A-Za-z0-9_-]{8}\.(?:js|css|woff2?)$/,
+        ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^v$/],
         cleanupOutdatedCaches: true,
       },
     }),

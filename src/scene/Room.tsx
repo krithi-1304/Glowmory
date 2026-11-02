@@ -29,6 +29,8 @@ const sceneVertexShader = `
 
 const sceneFragmentShader = `
   uniform sampler2D uMap;
+  uniform sampler2D uOpenPlate;
+  uniform float uOpening;
   uniform vec2 uResolution;
   uniform float uTime;
   uniform float uMotion;
@@ -96,6 +98,31 @@ const sceneFragmentShader = `
 
     float moonHalo = exp(-length((topUv - vec2(0.77, 0.17)) / vec2(0.065, 0.085)) * 3.2);
     color += vec3(0.1, 0.082, 0.055) * moonHalo * (0.5 + 0.5 * sin(time * 0.22)) * 0.055 * uMotion;
+    // Only the cap footprint is patched. The surrounding original art is untouched.
+    vec2 px = topUv * vec2(1536.0, 1024.0);
+    if (uOpening > 0.001) {
+      float openingMask = smoothstep(625.0, 629.0, px.x) * (1.0-smoothstep(900.0,904.0,px.x))
+        * smoothstep(325.0,329.0,px.y) * (1.0-smoothstep(386.0,390.0,px.y));
+      color = mix(color, texture2D(uOpenPlate, sampleUv).rgb, openingMask);
+      // Reuse the original copper pixels, with inverse placement for the lifting cap.
+      vec2 local = px - vec2(765.0 + 80.0*uOpening, 355.0 - 115.0*uOpening);
+      float angle = -0.6*uOpening;
+      local = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * local;
+      local.y /= 1.0 - 0.12*uOpening;
+      // Shaded inner disk gives the lifted original rim an underside, rather
+      // than rotating a paper-thin strip of pixels in screen space.
+      float diskRadius = length((local-vec2(0.0,20.0*uOpening))/vec2(134.0,max(1.0,66.0*uOpening)));
+      float diskMask = (1.0-smoothstep(0.97,1.0,diskRadius))*smoothstep(0.15,0.5,uOpening);
+      vec3 copper = mix(vec3(0.028,0.014,0.009),vec3(0.24,0.105,0.04),pow(clamp(diskRadius,0.0,1.0),8.0));
+      color = mix(color,copper,diskMask);
+      vec2 lidPx = local + vec2(765.0,355.0);
+      float nx = clamp(abs((lidPx.x-765.0)/137.0),0.0,1.0);
+      float curve = 1.0-sqrt(1.0-nx*nx);
+      float cap = smoothstep(628.0,630.0,lidPx.x) * (1.0-smoothstep(899.0,901.0,lidPx.x))
+        * smoothstep(329.0+10.0*curve,331.0+10.0*curve,lidPx.y)
+        * (1.0-smoothstep(378.0-3.0*curve,380.0-3.0*curve,lidPx.y));
+      color = mix(color, texture2D(uMap,vec2(lidPx.x/1536.0,1.0-lidPx.y/1024.0)).rgb, cap);
+    }
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -159,12 +186,20 @@ function toWorldRect(
 }
 
 function AnimatedBackdrop({
+  jarOpen,
+  savingMemory,
   calmMode,
   motionAllowed,
 }: {
   calmMode: boolean;
   motionAllowed: boolean;
+  jarOpen: boolean;
+  savingMemory: boolean;
 }) {
+  const openingStarted = useRef(0);
+  useEffect(() => { if (jarOpen) openingStarted.current = performance.now(); }, [jarOpen]);
+  const openSource = useLoader(THREE.TextureLoader, `${import.meta.env.BASE_URL}assets/jar-open-plate.jpg`);
+  const openPlate = useMemo(() => { const texture = openSource.clone(); texture.colorSpace = THREE.SRGBColorSpace; texture.needsUpdate = true; return texture; }, [openSource]);
   const sourceTexture = useLoader(
     THREE.TextureLoader,
     `${import.meta.env.BASE_URL}assets/glowmory-night-clearing.jpg`,
@@ -184,14 +219,17 @@ function AnimatedBackdrop({
   const uniforms = useMemo(
     () => ({
       uMap: { value: texture },
+      uOpenPlate: { value: openPlate },
+      uOpening: { value: 0 },
       uResolution: { value: new THREE.Vector2(size.width, size.height) },
       uTime: { value: 0 },
       uMotion: { value: 1 },
     }),
-    [size.height, size.width, texture],
+    [size.height, size.width, texture, openPlate],
   );
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     if (!material.current) return;
+    material.current.uniforms.uOpening!.value = THREE.MathUtils.damp(material.current.uniforms.uOpening!.value as number, jarOpen && (savingMemory || performance.now() - openingStarted.current < 1450) ? 1 : 0, 5, motionAllowed ? Math.min(delta,0.05) : 1);
     material.current.uniforms.uTime!.value =
       clock.elapsedTime * (calmMode ? 0.16 : 1);
     material.current.uniforms.uMotion!.value = motionAllowed ? 1 : 0;
@@ -640,12 +678,7 @@ function BirthRitual({
   calmMode: boolean;
 }) {
   const start = useRef(0);
-  const note = useRef<THREE.Group>(null);
-  const foldedPanel = useRef<THREE.Group>(null);
   const serum = useRef<THREE.Group>(null);
-  const noteMaterial = useRef<THREE.MeshBasicMaterial>(null);
-  const foldedNoteMaterial = useRef<THREE.MeshBasicMaterial>(null);
-  const noteDetailMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const serumMaterial = useRef<THREE.MeshBasicMaterial>(null);
   useEffect(() => {
     if (birthKey) start.current = performance.now();
@@ -657,86 +690,27 @@ function BirthRitual({
     const targetX = jar.left + jar.width * 0.5;
     const targetY = jar.top - jar.height * 0.5;
     const mouthY = targetY + jar.height * 0.75;
-    if (note.current) {
-      const fold = THREE.MathUtils.smoothstep(t, 0.7, 2.3);
-      const travel = THREE.MathUtils.smoothstep(t, 0.15, 2.1);
-      note.current.position.set(
-        targetX + Math.sin(Math.min(t, 3.05) * 1.45) * jar.width * 0.018,
-        THREE.MathUtils.lerp(
-          mouthY + jar.height * 0.12,
-          mouthY - jar.height * 0.08,
-          travel,
-        ),
-        2.5,
-      );
-      note.current.rotation.z = -0.08 + Math.sin(t * 1.7) * 0.045;
-      if (foldedPanel.current)
-        foldedPanel.current.rotation.y = -fold * Math.PI * 0.92;
-      const noteOpacity = THREE.MathUtils.clamp(
-        1 - THREE.MathUtils.smoothstep(t, 2.35, 3.45),
-        0,
-        1,
-      );
-      if (noteMaterial.current) noteMaterial.current.opacity = noteOpacity;
-      if (foldedNoteMaterial.current)
-        foldedNoteMaterial.current.opacity = noteOpacity;
-      if (noteDetailMaterial.current)
-        noteDetailMaterial.current.opacity = noteOpacity * 0.45;
-    }
     if (serum.current) {
       const drip = THREE.MathUtils.smoothstep(t, 3.3, 6.2);
-      serum.current.visible = t > 2.7 && t < 6.8;
+      serum.current.visible = t > 3.2 && t < 6.8;
       serum.current.position.set(
         targetX + Math.sin(t * 1.45) * jar.width * 0.018,
         THREE.MathUtils.lerp(
-          mouthY - jar.height * 0.08,
+          mouthY + jar.height * 0.13,
           targetY - jar.height * 0.32,
           drip,
         ),
-        2.55,
+        2,
       );
       const dropScale = 0.15 + Math.sin(t * 3.1) * 0.006;
       serum.current.scale.set(dropScale, dropScale, dropScale);
       if (serumMaterial.current)
         serumMaterial.current.opacity =
-          t < 3.3 ? (t - 2.7) / 0.6 : t > 6.2 ? 1 - (t - 6.2) / 0.6 : 0.9;
+          t < 3.5 ? (t - 3.2) / 0.3 : t > 6.2 ? 1 - (t - 6.2) / 0.6 : 0.9;
     }
   });
   return (
     <group>
-      <group ref={note}>
-        <mesh position={[-0.105, 0, 0]}>
-          <planeGeometry args={[0.21, 0.3]} />
-          <meshBasicMaterial
-            ref={noteMaterial}
-            color="#fff1d8"
-            transparent
-            opacity={0}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        <group ref={foldedPanel}>
-          <mesh position={[0.105, 0, 0]}>
-            <planeGeometry args={[0.21, 0.3]} />
-            <meshBasicMaterial
-              ref={foldedNoteMaterial}
-              color="#fff1d8"
-              transparent
-              opacity={0}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        </group>
-        <mesh position={[-0.105, 0, 0.01]}>
-          <planeGeometry args={[0.14, 0.012]} />
-          <meshBasicMaterial
-            ref={noteDetailMaterial}
-            color="#d895a4"
-            transparent
-            opacity={0}
-          />
-        </mesh>
-      </group>
       <group ref={serum} visible={false}>
         <sprite scale={[2.8, 2.8, 1]}>
           <spriteMaterial map={getGlowTexture(feelingColors.proud)} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
@@ -762,6 +736,8 @@ function BirthRitual({
 }
 
 function RoomScene({
+  jarOpen,
+  savingMemory,
   frame,
   memories,
   birthKey,
@@ -772,6 +748,8 @@ function RoomScene({
   onSelectMemory,
 }: {
   frame: SceneFrame;
+  jarOpen: boolean;
+  savingMemory: boolean;
   memories: Memory[];
   birthKey: number;
   birthMemoryId: string | null;
@@ -792,7 +770,7 @@ function RoomScene({
   );
   return (
     <>
-      <AnimatedBackdrop calmMode={calmMode} motionAllowed={motionAllowed} />
+      <AnimatedBackdrop savingMemory={savingMemory} jarOpen={jarOpen} calmMode={calmMode} motionAllowed={motionAllowed} />
       <ambientLight intensity={1.25} color="#e7dfcd" />
       <directionalLight position={[-2, 4, 5]} intensity={1.4} color="#fff0d6" />
       <Fireflies
@@ -810,6 +788,8 @@ function RoomScene({
 }
 
 export function Room({
+  jarOpen = false,
+  savingMemory = false,
   memories,
   birthKey = 0,
   birthMemoryId = null,
@@ -818,6 +798,8 @@ export function Room({
   children,
 }: {
   memories: Memory[];
+  jarOpen?: boolean;
+  savingMemory?: boolean;
   birthKey?: number;
   birthMemoryId?: string | null;
   calmMode?: boolean;
@@ -864,6 +846,8 @@ export function Room({
           >
             <Suspense fallback={null}>
               <RoomScene
+                savingMemory={savingMemory}
+                jarOpen={jarOpen}
                 frame={frame}
                 memories={memories}
                 birthKey={birthKey}

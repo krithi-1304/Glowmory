@@ -553,7 +553,7 @@ button {
   to { opacity: 0.92; transform: translateX(-50%) scale(1.04); }
 }
 @keyframes chit-emerge {
-  0% { opacity: 0; transform: translate(-50%, 3rem) rotate(-8deg) scale(0.38, 0.24); border-radius: 8px 4px 10px 5px; }
+  0%, 22% { opacity: 0; transform: translate(-50%, 3rem) rotate(-8deg) scale(0.38, 0.24); border-radius: 8px 4px 10px 5px; }
   32% { opacity: 1; transform: translate(calc(-50% - 0.35rem), 0.45rem) rotate(3deg) scale(0.46, 0.3); border-radius: 8px 4px 10px 5px; }
   62% { transform: translate(calc(-50% + 0.12rem), -0.18rem) rotate(-2deg) scale(0.82, 0.88); border-radius: 24px 7px 20px 9px; }
   100% { opacity: 1; transform: translate(-50%, 0) rotate(-0.7deg) scale(1); }
@@ -959,7 +959,7 @@ button:disabled {
 .scene-copy--reading { opacity: 0; }
 .jar-chit { top: calc(1rem - var(--jar-mouth-y)); max-height: calc(var(--jar-mouth-y) - 2rem); }
 @keyframes chit-emerge {
-  0% { opacity: 0; transform: translate(-50%, calc(var(--jar-mouth-y) - 1rem)) rotate(-8deg) scale(.38); }
+  0%, 22% { opacity: 0; transform: translate(-50%, calc(var(--jar-mouth-y) - 1rem)) rotate(-8deg) scale(.38); }
   32% { opacity: 1; transform: translate(calc(-50% - .35rem), calc(var(--jar-mouth-y) * .45)) rotate(3deg) scale(.46); }
   100% { opacity: 1; transform: translate(-50%, 0) rotate(-.7deg) scale(1); }
 }
@@ -976,3 +976,31 @@ button:disabled {
 .crawler-thought { position: absolute; bottom: calc(100% + .5rem); right: .5rem; width: min(13rem, 80vw); padding: .8rem 1rem .35rem; border: 1px solid #d4ae73; border-radius: 45% 45% 8% 45% / 20% 30% 10% 25%; background: #fff0d2; color: #49392c; box-shadow: 0 5px 18px #17112466; }
 .crawler-thought p { margin: 0; font-family: var(--font-note); font-size: 1.2rem; line-height: 1.2; }
 .crawler-thought button { min-height: 44px; padding: .3rem 0; background: none; box-shadow: none; font-size: .75rem; text-decoration: underline; }
+
+/* The actual written parchment is split at two physical crease axes. */
+.memory-fold { position: fixed; z-index: 12; pointer-events: none; perspective: 1100px; transform-style: preserve-3d; animation: paper-to-mouth 3.3s ease-in-out both; }
+.memory-fold__row { position: absolute; width:100%; height:50%; transform-style:preserve-3d; }
+.memory-fold__row--0 { top:0; transform-origin:center bottom; animation: crease-horizontal 1s ease-in-out .95s both; z-index:2; }
+.memory-fold__row--1 { top:50%; }
+.memory-fold__quarter { position:absolute; width:50%; height:100%; transform-style:preserve-3d; }
+.memory-fold__quarter--0 { left:0; transform-origin:right center; animation: crease-vertical .95s ease-in-out .2s both; z-index:2; }
+.memory-fold__quarter--1 { left:50%; }
+.memory-fold__face { position:absolute; clip-path:inset(0); }
+.memory-fold__front { position:absolute; inset:0; overflow:hidden; backface-visibility:hidden; transform:translateZ(.5px); }
+.memory-fold__back { position:absolute; inset:0; background:linear-gradient(110deg,#e2c395,#fff3df 18%,#fff3df 85%,#e8cda3); transform:rotateY(180deg) translateZ(1px); backface-visibility:hidden; }
+.fold-writing { min-height:7rem; padding:.75rem; white-space:pre-wrap; font-family:var(--font-note); font-size:1.5rem; }
+.memory-fold__light { position:absolute; left:75%; top:75%; width:1.1rem; height:1.4rem; border-radius:65% 35% 60% 40%; background:#ffe3a0; box-shadow:0 0 18px 6px #ffd97a88; animation: folded-light 3.3s ease both; }
+@keyframes crease-vertical { to { transform:rotateY(179deg); } }
+@keyframes crease-horizontal { to { transform:rotateX(-179deg); } }
+@keyframes paper-to-mouth { 0% { transform:translate(0,0); } 55% { transform:translate(-25%,-25%); } 76% { transform:translate(calc(var(--paper-x) - 25% - 1rem),calc(var(--paper-y) - 25% + 1rem)); } 100% { transform:translate(calc(var(--paper-x) - 25%),calc(var(--paper-y) - 25%)); visibility:hidden; } }
+.memory-fold__row { animation-composition:replace; }
+.memory-fold__face { animation:fold-surface 3.3s ease both; }
+@keyframes fold-surface { 0%,50% { opacity:1; } 66%,100% { opacity:0; } }
+.memory-fold__back { animation:fold-surface 3.3s ease both; }
+@keyframes folded-light { 0%,52% { opacity:0; transform:translate(-50%,-50%) scale(.2); } 68%,88% { opacity:1; transform:translate(-50%,-50%) scale(1); } 100% { opacity:0; transform:translate(-50%,-50%) scale(.75); } }
+@media (prefers-reduced-motion:reduce) { .memory-fold { display:none; } }
+
+.memory-fold__quarter { background:#fff3df; animation:fold-surface 3.3s ease both; }
+.memory-fold__quarter--0 { animation:crease-vertical .95s ease-in-out .2s both, fold-surface 3.3s ease both; }
+.memory-fold__front { animation:fold-ink 1.25s ease both; }
+@keyframes fold-ink { 0%,65% { opacity:1; } 100% { opacity:0; } }

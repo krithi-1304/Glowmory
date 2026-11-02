@@ -104,3 +104,25 @@ test('caterpillar supports keyboard dismissal and the moon opens settings', asyn
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
+
+
+test('offline reload retains scenery, opening plate and versioned app icons', async ({ page, context }) => {
+  await page.goto('/');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(async () => (await caches.keys()).length > 0);
+  await page.reload();
+  await context.setOffline(true);
+  try {
+    await page.reload();
+    const assets = await page.evaluate(async () => Promise.all([
+      'assets/glowmory-night-clearing.jpg', 'assets/jar-open-plate.jpg',
+      'assets/glowmory-tab.png?v=20261028', 'assets/glowmory-app-512.png?v=20261028',
+    ].map(async path => (await fetch(path)).ok)));
+    expect(assets).toEqual([true, true, true, true]);
+    await page.getByRole('button', { name: 'Ask the Jar', exact: true }).click();
+    await page.getByRole('button', { name: 'Surprise me' }).click();
+    await expect(page.getByRole('dialog', { name: 'A comforting thought' })).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});
