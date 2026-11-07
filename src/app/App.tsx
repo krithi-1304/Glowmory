@@ -72,6 +72,10 @@ function JarChit({
   onRest: () => void;
   onReleaseEnd: () => void;
 }) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const content = memory ? `${memory.text}${memory.senseAnswer ? `\n\n${memory.senseAnswer}` : ''}` : message;
+  const pages = content.match(/[\s\S]{1,100}(?:\s|$)|[\s\S]{1,100}/g) ?? [''];
+  const currentPage = Math.min(pageIndex, pages.length - 1);
   return (
     <article
       className={`jar-chit${releasing ? ' jar-chit--releasing' : ''}${calm ? ' jar-chit--calm' : ''}`}
@@ -90,26 +94,21 @@ function JarChit({
       <p className="jar-chit__source">
         {memory ? 'A memory you saved' : 'A thought for this moment'}
       </p>
-      {memory ? (
-        <>
-          <h2>{memory.feeling ? strings.feelings[memory.feeling] : 'A little light'}</h2>
-          <p className="jar-chit__message" role="status">{memory.text}</p>
-          {memory.senseAnswer && (
-            <p className="jar-chit__sense">{memory.senseAnswer}</p>
-          )}
-        </>
-      ) : (
-        <p className="jar-chit__message" role="status">{message}</p>
-      )}
+      <p className="jar-chit__message" role="status">{pages[currentPage]?.trim()}</p>
+      {pages.length > 1 && <span className="jar-chit__page-number">{currentPage + 1} / {pages.length}</span>}
+      <div className="jar-chit__footer">
+      {pages.length > 1 && <button className="jar-chit__turn" aria-label="Previous page" disabled={currentPage === 0 || releasing} onClick={() => setPageIndex(currentPage - 1)}>‹</button>}
       <button className="jar-chit__release" onClick={onRelease} disabled={releasing}>
         Let this light go
       </button>
+      {pages.length > 1 && <button className="jar-chit__turn" aria-label="Next page" disabled={currentPage === pages.length - 1 || releasing} onClick={() => setPageIndex(currentPage + 1)}>›</button>}
+      </div>
       {memory && (
-        <div className="jar-chit__links">
+        <details className="jar-chit__more"><summary>More with this memory</summary><div className="jar-chit__links">
           <button onClick={onAgain}>Ask again</button>
           <button onClick={onBreathe}>Breathe with it</button>
           <button onClick={onRest}>Let this memory rest</button>
-        </div>
+        </div></details>
       )}
     </article>
   );
@@ -367,6 +366,7 @@ export function App() {
           <>
             <span className="jar-warm-glow" aria-hidden="true" />
             <JarChit
+              key={selected?.id ?? jarReply}
               memory={panel === 'reader' ? selected : null}
               message={jarReply}
               releasing={releasingNote}

@@ -126,3 +126,62 @@ test('offline reload retains scenery, opening plate and versioned app icons', as
     await context.setOffline(false);
   }
 });
+
+test('long notes turn pages without a scrolling parchment or lost text', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const text = 'A warm evening in the garden. '.repeat(9).trim();
+  await page.getByRole('button', { name: 'Leave a Little Light' }).click();
+  await page.getByPlaceholder('Write it down so it can glow…').fill(text);
+  await page.getByRole('button', { name: 'Let it glow', exact: true }).click();
+  await expect(page.getByText('A new firefly was born.')).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Ask the Jar', exact: true }).click();
+  await page.getByRole('button', { name: 'Surprise me' }).click();
+  const parts: string[] = [];
+  for (let index = 0; index < 10; index += 1) {
+    parts.push(await page.locator('.jar-chit__message').innerText());
+    expect(await page.locator('.jar-chit').evaluate(node => node.scrollHeight > node.clientHeight)).toBe(false);
+    const next = page.getByRole('button', { name: 'Next page' });
+    if (await next.isDisabled()) break;
+    await next.click();
+  }
+  expect(parts.join(' ').replace(/\s+/g, ' ').trim()).toBe(text);
+  await page.getByRole('button', { name: 'Previous page' }).click();
+  await expect(page.locator('.jar-chit__page-number')).toContainText('2 / 3');
+  await page.getByText('More with this memory', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Let this memory rest' })).toBeVisible();
+});
+
+test('peaceful ambience stays bounded and stops when sound is disabled', async ({ page }) => {
+  await page.addInitScript(() => {
+    const probe = { active: 0, highestPitch: 0 };
+    Object.defineProperty(window, 'audioProbe', { value: probe });
+    const create = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () {
+      const node = create.call(this);
+      const start = node.start.bind(node);
+      node.start = (when?: number) => {
+        probe.active += 1;
+        probe.highestPitch = Math.max(probe.highestPitch, node.frequency.value);
+        start(when);
+      };
+      node.addEventListener('ended', () => { probe.active -= 1; });
+      return node;
+    };
+  });
+  const metrics = () => page.evaluate(() => (window as unknown as {
+    audioProbe: { active: number; highestPitch: number }
+  }).audioProbe);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect.poll(async () => (await metrics()).active).toBe(8);
+  expect((await metrics()).highestPitch).toBeLessThanOrEqual(440);
+  await page.getByRole('checkbox', { name: 'Sound', exact: true }).uncheck();
+  await expect.poll(async () => (await metrics()).active).toBe(0);
+  await page.getByRole('checkbox', { name: 'Sound', exact: true }).check();
+  await page.getByRole('checkbox', { name: 'Sound', exact: true }).uncheck();
+  await page.getByRole('checkbox', { name: 'Sound', exact: true }).check();
+  await expect.poll(async () => (await metrics()).active).toBe(8);
+});

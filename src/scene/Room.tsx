@@ -31,6 +31,7 @@ const sceneFragmentShader = `
   uniform sampler2D uMap;
   uniform sampler2D uOpenPlate;
   uniform float uOpening;
+  uniform float uAwaken;
   uniform vec2 uResolution;
   uniform float uTime;
   uniform float uMotion;
@@ -91,6 +92,18 @@ const sceneFragmentShader = `
     warpedUv.x += cloudRegion * cloudDrift * 0.0011 * uMotion;
     warpedUv.y += cloudRegion * cloudFlow * 0.00024 * uMotion;
 
+    // Small local sway within the painted jar silhouette; ground and sky UVs
+    // remain unchanged. Fade at the contact edge so the rock cannot wobble.
+    vec2 jarPx = topUv * vec2(1536.0,1024.0);
+    float shoulder = smoothstep(405.0,465.0,jarPx.y);
+    float halfWidth = mix(137.0,164.0,shoulder);
+    float jarMask = (1.0-smoothstep(halfWidth-3.0,halfWidth+2.0,abs(jarPx.x-765.0)))
+      * smoothstep(326.0,331.0,jarPx.y) * (1.0-smoothstep(755.0,777.0,jarPx.y));
+    float bowMask = ellipseMask(jarPx,vec2(879.0,444.0),vec2(81.0,80.0));
+    float swayMask = max(jarMask,bowMask);
+    float sway = sin(uAwaken*18.8496)*sin(uAwaken*3.14159)*0.0045;
+    vec2 pivotDelta = jarPx-vec2(765.0,775.0);
+    warpedUv += vec2(-pivotDelta.y/1536.0,-pivotDelta.x/1024.0)*sway*swayMask;
     vec3 color = texture2D(uMap, warpedUv).rgb;
     float waterSheen = max(rippleA, 0.0) + max(rippleB, 0.0) * 0.7;
     color += vec3(0.12, 0.16, 0.2) * waterSheen * 0.045 * uMotion;
@@ -221,6 +234,7 @@ function AnimatedBackdrop({
       uMap: { value: texture },
       uOpenPlate: { value: openPlate },
       uOpening: { value: 0 },
+      uAwaken: { value: 0 },
       uResolution: { value: new THREE.Vector2(size.width, size.height) },
       uTime: { value: 0 },
       uMotion: { value: 1 },
@@ -229,7 +243,11 @@ function AnimatedBackdrop({
   );
   useFrame(({ clock }, delta) => {
     if (!material.current) return;
-    material.current.uniforms.uOpening!.value = THREE.MathUtils.damp(material.current.uniforms.uOpening!.value as number, jarOpen && (savingMemory || performance.now() - openingStarted.current < 1450) ? 1 : 0, 5, motionAllowed ? Math.min(delta,0.05) : 1);
+    const elapsed = (performance.now()-openingStarted.current)/1000;
+    const animate = motionAllowed && !calmMode;
+    material.current.uniforms.uAwaken!.value = jarOpen && animate ? Math.min(elapsed/.65,1) : 0;
+    const shouldOpen = jarOpen && (!animate || elapsed >= .65) && (savingMemory || elapsed < 2.25);
+    material.current.uniforms.uOpening!.value = THREE.MathUtils.damp(material.current.uniforms.uOpening!.value as number, shouldOpen ? 1 : 0, 7, animate ? Math.min(delta,.05) : 1);
     material.current.uniforms.uTime!.value =
       clock.elapsedTime * (calmMode ? 0.16 : 1);
     material.current.uniforms.uMotion!.value = motionAllowed ? 1 : 0;
