@@ -128,8 +128,14 @@ export function App() {
   const merge = useMemoryStore((s) => s.merge);
   const clear = useMemoryStore((s) => s.clear);
   const [panel, setPanel] = useState<
-    'write' | 'low' | 'settings' | 'reader' | 'sleeping' | 'list' | null
-  >(null);
+    'welcome' | 'write' | 'low' | 'settings' | 'reader' | 'sleeping' | 'list' | null
+  >(() => {
+    try {
+      return localStorage.getItem('glowmory-intro-seen') ? null : 'welcome';
+    } catch {
+      return 'welcome';
+    }
+  });
   const [text, setText] = useState('');
   const [sense, setSense] = useState('');
   const [notice, setNotice] = useState('');
@@ -296,6 +302,15 @@ export function App() {
     link.download = `glowmory-backup-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
+    setNotice('A backup file is ready to keep somewhere safe.');
+  };
+  const closeWelcome = () => {
+    try {
+      localStorage.setItem('glowmory-intro-seen', 'true');
+    } catch {
+      // The introduction can still close if browser storage is unavailable.
+    }
+    setPanel(null);
   };
   if (!ready)
     return (
@@ -429,11 +444,13 @@ export function App() {
           }}
         >
           <section
-            className={panel === 'write' ? 'panel panel--parchment' : 'panel'}
+            className={panel === 'write' ? 'panel panel--parchment' : panel === 'welcome' ? 'panel panel--welcome' : 'panel'}
             role="dialog"
             aria-modal="true"
             aria-label={
-              panel === 'write'
+              panel === 'welcome'
+                ? 'How Glowmory works'
+                : panel === 'write'
                 ? 'Write a memory'
               : panel === 'sleeping'
                 ? 'Sleeping memories'
@@ -449,6 +466,20 @@ export function App() {
             >
               ×
             </button>
+            {panel === 'welcome' && (
+              <>
+                <p className="panel-kicker">A private ritual for small good things</p>
+                <h2>Give a good moment somewhere to glow.</h2>
+                <p className="welcome-copy">Write one small memory and it becomes a firefly in your jar. When a day feels heavy, ask the jar to return a memory or a gentle thought.</p>
+                <ol className="welcome-steps">
+                  <li><strong>Leave a little light</strong><span>Save something worth remembering.</span></li>
+                  <li><strong>Let it glow</strong><span>Watch your note become one memory-linked firefly.</span></li>
+                  <li><strong>Ask the jar</strong><span>Come back when you want a little comfort.</span></li>
+                </ol>
+                <p className="welcome-privacy">Everything stays on this device. Export a backup in Tend the Jar before clearing browser data.</p>
+                <button className="primary-button" onClick={closeWelcome}>Enter the clearing</button>
+              </>
+            )}
             {panel === 'write' && (
               <>
                 <p className="panel-kicker">A small good thing</p>
@@ -525,13 +556,17 @@ export function App() {
                     }
                   />
                 </label>
+                <div className="backup-guide">
+                  <h3>Keep your jar safe</h3>
+                  <p>Memories stay in this browser. Save a backup before clearing site data or moving to another device.</p>
+                </div>
                 <div className="settings-actions">
                   <button onClick={() => void enableMotion()}>
                     Enable motion
                   </button>
-                  <button onClick={download}>Export backup</button>
+                  <button onClick={download}>Save a backup file</button>
                   <label className="file-button">
-                    Import backup
+                    Restore a backup file
                     <input
                       type="file"
                       accept="application/json"
